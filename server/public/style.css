@@ -3,9 +3,11 @@
   padding: 15px;
   background: #f8f9fa;
   border-radius: 4px;
+  width: 100%;
 }
 
 .text-input {
+  width: 100%;
   margin: 20px 0;
   padding: 15px;
   background: #f8f9fa;
@@ -13,13 +15,12 @@
 }
 
 .input-group {
+  width: auto;
   display: flex;
   gap: 10px;
-  align-items: center;
 }
 
 .input-group input {
-  width: 80px;
   padding: 5px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -28,12 +29,11 @@
 .text-input-group {
   display: flex;
   gap: 10px;
-  align-items: center;
-  justify-content: space-around;
+  width: auto;
 }
 
 .text-input-group input {
-  width: 90%;
+  width: 92%;
   border: 1px solid #ddd;
   border-radius: 4px;
   max-height: 4vw;
@@ -46,19 +46,25 @@
 }
 
 .text-input-group label {
-  width: 100%;
+  width: auto;
 }
 
 .screenshot-container {
-  margin: 20px 0;
+  margin: 20px auto;
   text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 #device-screen {
-  max-width: 100%;
+  max-width: 30%;
   height: auto;
   border: 1px solid #ddd;
   border-radius: 4px;
+  margin: 0 auto;
+  display: block;
 }
 
 /* public/style.css */
@@ -71,6 +77,9 @@ body {
 .container {
   max-width: 800px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .command-buttons {
@@ -78,6 +87,7 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
+  width: 100%;
 }
 
 button {
@@ -100,6 +110,7 @@ button:hover {
   padding: 20px;
   border-radius: 4px;
   min-height: 200px;
+  width: 100%;
 }
 
 pre {

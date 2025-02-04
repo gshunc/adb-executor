@@ -32,24 +32,33 @@ app.post("/api/adb", async (req, res) => {
 
 app.post("/api/screenshot", async (req, res) => {
   try {
-    const files = await fs.readdir("./screencaps");
+    const files = await fs.readdir("./public/screencaps");
 
-    const { stdout } = await execFileAsync(
-      "./platform-tools/adb",
-      ["exec-out", "screencap", "-p"],
-      {
-        maxBuffer: 1024 * 1024 * 10,
-      }
-    );
+    await execFileAsync("./platform-tools/adb", [
+      "shell",
+      "screencap",
+      "-p",
+      "/sdcard/screencap.png",
+    ]);
+
+    await execFileAsync("./platform-tools/adb", [
+      "pull",
+      "/sdcard/screencap.png",
+    ]);
 
     const filename = `screenshot${files.length}.png`;
-    const screenshotPath = path.join("./screencaps", filename);
-    await fs.writeFile(screenshotPath, stdout);
+    const screenshotPath = path.join("./public/screencaps", filename);
+    fs.rename("./screencap.png", screenshotPath, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
 
     res.json({
       success: true,
       path: screenshotPath,
-      filename: filename,
+      filename: "/screencaps/" + filename,
       message: `Screenshot saved as ${filename}`,
     });
   } catch (error) {

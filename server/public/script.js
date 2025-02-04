@@ -24,6 +24,7 @@ async function executeCommand(command, args = []) {
 
 async function takeScreenshot(command, args = []) {
   const output = document.getElementById("output");
+  const deviceScreen = document.getElementById("device-screen");
   output.textContent = "Taking screenshot...";
 
   try {
@@ -42,7 +43,7 @@ async function takeScreenshot(command, args = []) {
     }
 
     output.textContent = data.message;
-    deviceScreen.src = data.path;
+    deviceScreen.src = data.filename;
     deviceScreen.style.display = "block";
   } catch (error) {
     output.textContent = `Error: ${error.message}`;
