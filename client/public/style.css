@@ -1,0 +1,120 @@
+.coordinate-input {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.text-input {
+  width: 100%;
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.input-group {
+  width: auto;
+  display: flex;
+  gap: 10px;
+}
+
+.input-group input {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.text-input-group {
+  display: flex;
+  gap: 10px;
+  width: auto;
+}
+
+.text-input-group input {
+  width: 92%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 4vw;
+  padding: 10px;
+  margin-top: 1vh;
+}
+
+.text-input-group button {
+  margin-top: 3vh;
+}
+
+.text-input-group label {
+  width: auto;
+}
+
+.screenshot-container {
+  margin: 20px auto;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+#device-screen {
+  max-width: 30%;
+  height: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 0 auto;
+  display: block;
+}
+
+/* public/style.css */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.command-buttons {
+  margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+button {
+  padding: 10px;
+  cursor: pointer;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  min-width: 8vw;
+  max-height: 4vw;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+.output-container {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 4px;
+  min-height: 200px;
+  width: 100%;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
