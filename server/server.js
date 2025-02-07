@@ -11,13 +11,14 @@ const execFileAsync = util.promisify(execFile);
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "../client/public")));
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public/index.html"));
+  res.sendFile(path.join(__dirname, "../client/public/index.html"));
 });
 
 app.post("/api/adb", async (req, res) => {
+  s;
   try {
     const { command, args = [] } = req.body;
     const { stdout } = await execFileAsync("./platform-tools/adb", [
