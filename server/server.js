@@ -18,7 +18,6 @@ app.get("/", (req, res) => {
 });
 
 app.post("/api/adb", async (req, res) => {
-  s;
   try {
     const { command, args = [] } = req.body;
     const { stdout } = await execFileAsync("./platform-tools/adb", [
@@ -92,6 +91,41 @@ app.post("/api/tap", async (req, res) => {
     res.json({
       success: true,
       message: `Tapped at coordinates (${x}, ${y})`,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/screencaps/:imageName", async (req, res) => {
+  const imagePath = path.join(
+    __dirname,
+    "public/screencaps",
+    req.params.imageName
+  );
+  res.sendFile(imagePath);
+});
+
+app.get("/api/dimensions", async (req, res) => {
+  try {
+    const { stdout } = await execFileAsync("./platform-tools/adb", [
+      "shell",
+      "wm",
+      "size",
+    ]);
+
+    if (stdout) {
+      let split_dimensions = stdout.split("x");
+      var x = Number(split_dimensions[0].slice(-4));
+      var y = Number(split_dimensions[1].slice(0, -1));
+    } else {
+      throw new Error("Dimension retrieval failed, please try again.");
+    }
+
+    res.json({
+      success: true,
+      x: x,
+      y: y,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

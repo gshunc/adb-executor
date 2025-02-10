@@ -7,42 +7,45 @@
   <body>
     <div class="container">
       <h1>ADB Web Interface</h1>
-      <div class="command-buttons">
-        <button onclick="executeCommand('devices')">List Devices</button>
-        <button onclick="executeCommand('shell', ['dumpsys', 'battery'])">
-          Battery Status
-        </button>
-        <button onclick="executeCommand('shell', ['pm', 'list', 'packages'])">
-          List Packages
-        </button>
-        <button onclick="takeScreenshot()">Take Screenshot</button>
-      </div>
 
-      <div class="coordinate-input">
-        <h3>Click Coordinates</h3>
-        <div class="input-group">
-          <label>X: <input type="number" id="x-coord" /></label>
-          <label>Y: <input type="number" id="y-coord" /></label>
-          <button onclick="clickCoordinate()">Click Here</button>
+      <div class="main-interface">
+        <div class="control-panel">
+          <div class="command-buttons">
+            <button onclick="executeCommand('devices')">List Devices</button>
+            <button onclick="eventLoop()">Start Device Use</button>
+            <button onclick="stopScreenshotLoop()">Stop Device Use</button>
+            <button onclick="goHome()">Return to Home</button>
+            <button onclick="scrollUp()">Scroll Up</button>
+            <button onclick="scrollDown()">Scroll Down</button>
+            <button onclick="pollDevice()" id="status-indicator">
+              Device Status
+            </button>
+          </div>
+
+          <div class="input-controls">
+            <div class="text-input">
+              <h3>Enter Text</h3>
+              <div class="text-input-group">
+                <input
+                  type="text"
+                  id="input-text"
+                  placeholder="Enter text here..."
+                />
+                <button onclick="typeText()">Enter</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="output-container">
+            <pre id="output">No output yet...</pre>
+          </div>
         </div>
-      </div>
 
-      <div class="text-input">
-        <h3>Enter Text</h3>
-        <div class="text-input-group">
-          <label
-            >What do you want to type?: <input type="text" id="input-text"
-          /></label>
-          <button onclick="typeText()">Click Here</button>
+        <div class="device-view">
+          <div class="screenshot-container">
+            <img id="device-screen" style="display: none" />
+          </div>
         </div>
-      </div>
-
-      <div class="screenshot-container">
-        <img id="device-screen" style="display: none" />
-      </div>
-
-      <div class="output-container">
-        <pre id="output">No output yet...</pre>
       </div>
     </div>
     <script src="script.js"></script>
