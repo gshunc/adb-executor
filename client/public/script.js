@@ -1,3 +1,5 @@
+let saveScreenshots = false;
+
 async function executeCommand(command, args = []) {
   const output = document.getElementById("output");
   output.textContent = "Executing command...";
@@ -22,7 +24,7 @@ async function executeCommand(command, args = []) {
   }
 }
 
-async function takeScreenshot(command, args = []) {
+async function takeScreenshot(saveScreenshots, command, args = []) {
   const output = document.getElementById("output");
   const deviceScreen = document.getElementById("device-screen");
   output.textContent = "Taking screenshot...";
@@ -33,7 +35,7 @@ async function takeScreenshot(command, args = []) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ command, args }),
+      body: JSON.stringify({ command, args, saveScreenshots }),
     });
 
     const data = await response.json();
@@ -43,14 +45,21 @@ async function takeScreenshot(command, args = []) {
     }
 
     output.textContent = data.message;
-    deviceScreen.src = `/api${data.filename}`;
-    deviceScreen.style.display = "block";
+    if (data.kept == true) {
+      console.log("hit");
+      deviceScreen.src = `/api${data.filename}`;
+      deviceScreen.style.display = "block";
+      document.getElementById(
+        "clear-photos"
+      ).textContent = `Clear Photos: ${data.count} photo(s)`;
+    }
   } catch (error) {
     output.textContent = `Error: ${error.message}`;
   }
 }
 
 async function typeText() {
+  await photoSaveController();
   const input = document.getElementById("input-text").value;
 
   if (!input) {
@@ -66,6 +75,7 @@ async function typeText() {
 }
 
 async function pressScreen(e) {
+  await photoSaveController();
   let cursorX = e.pageX;
   let cursorY = e.pageY;
 
@@ -113,20 +123,25 @@ document
 
 let isScreenshotLoopRunning = false;
 
-async function eventLoop(persistent_screenshots = true) {
+async function eventLoop() {
   isScreenshotLoopRunning = true;
+  document.getElementById("clear-photos").disabled = true;
+  document.getElementById("clear-photos").style.background = "gray";
+  document.getElementById("device-starter").style.color = "lime";
 
   while (isScreenshotLoopRunning) {
     await takeScreenshot();
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
+
+  document.getElementById("device-starter").style.color = "maroon";
+  document.getElementById("clear-photos").disabled = false;
+  document.getElementById("clear-photos").style.background = "#007bff";
 }
 
 function stopScreenshotLoop() {
   isScreenshotLoopRunning = false;
 }
-
-function resetDevice() {}
 
 async function pollDevice() {
   var command = "devices";
@@ -179,6 +194,7 @@ pollingLoop().catch((error) => {
 
 async function goHome() {
   try {
+    await photoSaveController();
     await executeCommand("shell", ["input", "keyevent", "KEYCODE_HOME"]);
   } catch (error) {
     console.error(error);
@@ -187,6 +203,7 @@ async function goHome() {
 
 async function scrollUp() {
   try {
+    await photoSaveController();
     setTimeout(
       await executeCommand("shell", ["input", "swipe", 300, 300, 500, 1000]),
       20
@@ -198,11 +215,46 @@ async function scrollUp() {
 
 async function scrollDown() {
   try {
+    await photoSaveController();
     setTimeout(
       await executeCommand("shell", ["input", "swipe", 500, 1000, 300, 300]),
       20
     );
   } catch (error) {
     console.error(error);
+  }
+}
+
+async function clearPhotos() {
+  try {
+    const response = await fetch("/api/screencaps", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to clear photos");
+    }
+
+    const data = await response.json();
+    document.getElementById("clear-photos").textContent = `Clear Photos: ${
+      data.count || 0
+    } photo(s)`;
+    console.log(document.getElementById("clear-photos").textContent);
+  } catch (error) {
+    console.error("Error clearing photos:", error);
+  }
+}
+
+async function photoSaveController() {
+  try {
+    saveScreenshots = true;
+    setTimeout(() => {
+      saveScreenshots = !saveScreenshots;
+    }, 501);
+  } catch (error) {
+    console.log(error);
   }
 }

@@ -12,11 +12,16 @@
         <div class="control-panel">
           <div class="command-buttons">
             <button onclick="executeCommand('devices')">List Devices</button>
-            <button onclick="eventLoop()">Start Device Use</button>
+            <button onclick="eventLoop()" id="device-starter">
+              Start Device Use
+            </button>
             <button onclick="stopScreenshotLoop()">Stop Device Use</button>
             <button onclick="goHome()">Return to Home</button>
             <button onclick="scrollUp()">Scroll Up</button>
             <button onclick="scrollDown()">Scroll Down</button>
+            <button onclick="clearPhotos()" id="clear-photos">
+              Clear Photos
+            </button>
             <button onclick="pollDevice()" id="status-indicator">
               Device Status
             </button>

@@ -1,11 +1,11 @@
 const express = require("express");
+const { shouldKeepScreenshot } = require("./utilities");
 const fs = require("fs").promises;
 const cors = require("cors");
 const path = require("path");
 const { execFile } = require("child_process");
 const util = require("util");
 const app = express();
-const screenshotPath = process.env.SCREENSHOT_PATH;
 const adbPath = process.env.ADB_PATH;
 const execFileAsync = util.promisify(execFile);
 
@@ -33,6 +33,7 @@ app.post("/api/adb", async (req, res) => {
 app.post("/api/screenshot", async (req, res) => {
   try {
     const files = await fs.readdir("./public/screencaps");
+    const currentCount = files.length;
 
     await execFileAsync("./platform-tools/adb", [
       "shell",
@@ -46,20 +47,31 @@ app.post("/api/screenshot", async (req, res) => {
       "/sdcard/screencap.png",
     ]);
 
-    const filename = `screenshot${files.length}.png`;
+    const filename = `screenshot${currentCount}.png`;
     const screenshotPath = path.join("./public/screencaps", filename);
-    fs.rename("./screencap.png", screenshotPath, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
+
+    await fs.rename("./screencap.png", screenshotPath);
+
+    const shouldKeep =
+      req.body.saveScreenshot || (await shouldKeepScreenshot(currentCount));
+
+    if (currentCount != 0 && !shouldKeep) {
+      await fs.unlink(screenshotPath);
+      res.json({
+        success: true,
+        kept: false,
+        message: "Screenshot too similar to previous, discarded",
+      });
+      return;
+    }
 
     res.json({
       success: true,
+      kept: true,
       path: screenshotPath,
       filename: "/screencaps/" + filename,
       message: `Screenshot saved as ${filename}`,
+      count: currentCount,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -129,5 +141,18 @@ app.get("/api/dimensions", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/screencaps", async (req, res) => {
+  try {
+    const imagePath = path.join(__dirname, "public/screencaps");
+    const files = await fs.readdir(imagePath);
+    await Promise.all(
+      files.map((file) => fs.unlink(path.join(imagePath, file)))
+    );
+    res.json({ success: true, count: 0 });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message, count: null });
   }
 });

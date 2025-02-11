@@ -99,6 +99,10 @@ button:hover {
   border: 5px solid gray;
 }
 
+#device-starter {
+  color: maroon;
+}
+
 .screenshot-container {
   background: #f8f9fa;
   padding: 10px;
