@@ -102,6 +102,9 @@ button:hover {
 #device-starter {
   color: maroon;
 }
+#device-stopper {
+  background: gray;
+}
 
 .screenshot-container {
   background: #f8f9fa;

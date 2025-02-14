@@ -1,5 +1,11 @@
-let saveScreenshots = false;
+let saveScreenshots = false; // Tracks whether screenshots should be saved
+let isScreenshotLoopRunning = false; // Tracks if the screenshot loop is active
 
+/**
+ * Executes a command by sending it to the server and displays the result or error.
+ * @param {string} command - The command to execute.
+ * @param {Array} args - Optional arguments for the command.
+ */
 async function executeCommand(command, args = []) {
   const output = document.getElementById("output");
   output.textContent = "Executing command...";
@@ -15,15 +21,21 @@ async function executeCommand(command, args = []) {
 
     const data = await response.json();
     if (response.ok) {
-      output.textContent = data.result;
+      output.textContent = data.result; // Display command result
     } else {
-      output.textContent = `Error: ${data.error}`;
+      output.textContent = `Error: ${data.error}`; // Display error from server
     }
   } catch (error) {
-    output.textContent = `Error: ${error.message}`;
+    output.textContent = `Error: ${error.message}`; // Display network or other errors
   }
 }
 
+/**
+ * Takes a screenshot and updates the UI with the result.
+ * @param {boolean} saveScreenshots - Whether to save the screenshot.
+ * @param {string} command - The command to execute.
+ * @param {Array} args - Optional arguments for the command.
+ */
 async function takeScreenshot(saveScreenshots, command, args = []) {
   const output = document.getElementById("output");
   const deviceScreen = document.getElementById("device-screen");
@@ -38,26 +50,43 @@ async function takeScreenshot(saveScreenshots, command, args = []) {
       body: JSON.stringify({ command, args, saveScreenshots }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.error || "Screenshot failed");
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Screenshot failed");
     }
 
-    output.textContent = data.message;
-    if (data.kept == true) {
-      console.log("hit");
-      deviceScreen.src = `/api${data.filename}`;
-      deviceScreen.style.display = "block";
-      document.getElementById(
-        "clear-photos"
-      ).textContent = `Clear Photos: ${data.count} photo(s)`;
+    // If it's a JSON response (for discarded screenshots), handle that
+    if (response.headers.get("Content-Type").includes("application/json")) {
+      const data = await response.json();
+      output.textContent = data.message;
+      return;
     }
+
+    // For image responses, create a blob URL
+    const blob = await response.blob();
+    const imageUrl = URL.createObjectURL(blob);
+
+    deviceScreen.src = imageUrl;
+    deviceScreen.style.display = "block";
+
+    // Get metadata from headers
+    const count = response.headers.get("X-Screenshot-Count");
+    document.getElementById(
+      "clear-photos"
+    ).textContent = `Clear Photos: ${count} photo(s)`;
+
+    output.textContent = `Screenshot captured`;
+
+    // Clean up the blob URL when the image loads to prevent memory leaks
+    deviceScreen.onload = () => URL.revokeObjectURL(imageUrl);
   } catch (error) {
     output.textContent = `Error: ${error.message}`;
   }
 }
 
+/**
+ * Sends text input to the device.
+ */
 async function typeText() {
   await photoSaveController();
   const input = document.getElementById("input-text").value;
@@ -65,6 +94,7 @@ async function typeText() {
   if (!input) {
     document.getElementById("output").textContent =
       "Please enter a string to be typed.";
+    return; // Exit if no input is provided
   }
 
   try {
@@ -74,10 +104,14 @@ async function typeText() {
   }
 }
 
+/**
+ * Handles screen tap events and sends tap coordinates to the device.
+ * @param {Event} e - The click event.
+ */
 async function pressScreen(e) {
   await photoSaveController();
-  let cursorX = e.pageX;
-  let cursorY = e.pageY;
+  const cursorX = e.pageX;
+  const cursorY = e.pageY;
 
   try {
     const response = await fetch("/api/dimensions", {
@@ -88,110 +122,40 @@ async function pressScreen(e) {
     });
     const data = await response.json();
 
-    let screen_width = document.getElementById("device-screen").scrollWidth;
-
-    let screen_height = document.getElementById("device-screen").scrollHeight;
-
-    let origin_x = document
+    const screenWidth = document.getElementById("device-screen").scrollWidth;
+    const screenHeight = document.getElementById("device-screen").scrollHeight;
+    const originX = document
       .getElementById("device-screen")
       .getBoundingClientRect().left;
-
-    let origin_y =
+    const originY =
       document.getElementById("device-screen").getBoundingClientRect().top +
       window.scrollY;
 
-    let y_offset = cursorY - origin_y;
-    let x_offset = cursorX - origin_x;
+    const yOffset = cursorY - originY;
+    const xOffset = cursorX - originX;
 
-    let converted_y_offset = Math.round((y_offset / screen_height) * data.y);
-    let converted_x_offset = Math.round((x_offset / screen_width) * data.x);
+    const convertedYOffset = Math.round((yOffset / screenHeight) * data.y);
+    const convertedXOffset = Math.round((xOffset / screenWidth) * data.x);
 
     await executeCommand("shell", [
       "input",
       "tap",
-      converted_x_offset,
-      converted_y_offset,
+      convertedXOffset,
+      convertedYOffset,
     ]);
   } catch (error) {
     console.error(error);
   }
 }
 
+// Attach event listener to the device screen
 document
   .getElementById("device-screen")
   .addEventListener("click", pressScreen, true);
 
-let isScreenshotLoopRunning = false;
-
-async function eventLoop() {
-  isScreenshotLoopRunning = true;
-  document.getElementById("clear-photos").disabled = true;
-  document.getElementById("clear-photos").style.background = "gray";
-  document.getElementById("device-starter").style.color = "lime";
-
-  while (isScreenshotLoopRunning) {
-    await takeScreenshot();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  document.getElementById("device-starter").style.color = "maroon";
-  document.getElementById("clear-photos").disabled = false;
-  document.getElementById("clear-photos").style.background = "#007bff";
-}
-
-function stopScreenshotLoop() {
-  isScreenshotLoopRunning = false;
-}
-
-async function pollDevice() {
-  var command = "devices";
-  var args = [];
-
-  const response = await fetch("/api/adb", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ command, args }),
-  });
-
-  const data = await response.json();
-
-  return data.result != "List of devices attached\n\n";
-}
-
-let isRunning = true;
-
-async function pollingLoop() {
-  while (isRunning) {
-    try {
-      let device_online = await pollDevice();
-      if (device_online) {
-        document.getElementById("status-indicator").style.border =
-          "5px solid green";
-        document.getElementById("status-indicator").style.color = "green";
-        document.getElementById("status-indicator").textContent =
-          "Device Status: Connected";
-      } else {
-        document.getElementById("status-indicator").style.border =
-          "5px dashed red";
-        document.getElementById("status-indicator").style.color = "red";
-        document.getElementById("status-indicator").textContent =
-          "Device Status: Offline";
-      }
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    } catch (error) {
-      console.error("Fatal control loop error:", error);
-      isRunning = false;
-    }
-  }
-}
-
-pollingLoop().catch((error) => {
-  console.error("Fatal control loop error:", error);
-  isRunning = false;
-});
-
+/**
+ * Sends the "Home" command to the device.
+ */
 async function goHome() {
   try {
     await photoSaveController();
@@ -201,30 +165,33 @@ async function goHome() {
   }
 }
 
+/**
+ * Scrolls up on the device screen.
+ */
 async function scrollUp() {
   try {
     await photoSaveController();
-    setTimeout(
-      await executeCommand("shell", ["input", "swipe", 300, 300, 500, 1000]),
-      20
-    );
+    await executeCommand("shell", ["input", "swipe", 300, 300, 500, 1000]);
   } catch (error) {
     console.error(error);
   }
 }
 
+/**
+ * Scrolls down on the device screen.
+ */
 async function scrollDown() {
   try {
     await photoSaveController();
-    setTimeout(
-      await executeCommand("shell", ["input", "swipe", 500, 1000, 300, 300]),
-      20
-    );
+    await executeCommand("shell", ["input", "swipe", 500, 1000, 300, 300]);
   } catch (error) {
     console.error(error);
   }
 }
 
+/**
+ * Clears saved photos from the server.
+ */
 async function clearPhotos() {
   try {
     const response = await fetch("/api/screencaps", {
@@ -242,18 +209,101 @@ async function clearPhotos() {
     document.getElementById("clear-photos").textContent = `Clear Photos: ${
       data.count || 0
     } photo(s)`;
-    console.log(document.getElementById("clear-photos").textContent);
   } catch (error) {
     console.error("Error clearing photos:", error);
   }
 }
 
+/**
+ * Starts the screenshot loop.
+ */
+async function eventLoop() {
+  isScreenshotLoopRunning = true;
+  document.getElementById("clear-photos").disabled = true;
+  document.getElementById("clear-photos").style.background = "gray";
+  document.getElementById("device-starter").style.color = "lime";
+  document.getElementById("device-stopper").style.background = "#007bff";
+  document.getElementById("device-stopper").disabled = false;
+
+  while (isScreenshotLoopRunning) {
+    await takeScreenshot();
+  }
+}
+
+/**
+ * Stops the screenshot loop.
+ */
+function stopScreenshotLoop() {
+  isScreenshotLoopRunning = false;
+  document.getElementById("device-starter").style.color = "maroon";
+  document.getElementById("clear-photos").disabled = false;
+  document.getElementById("clear-photos").style.background = "#007bff";
+  document.getElementById("device-stopper").style.background = "gray";
+  document.getElementById("device-stopper").disabled = true;
+}
+
+/**
+ * Polls the device to check if it is online.
+ * @returns {boolean} - True if the device is online, false otherwise.
+ */
+async function pollDevice() {
+  const command = "devices";
+  const args = [];
+
+  const response = await fetch("/api/adb", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ command, args }),
+  });
+
+  const data = await response.json();
+  return data.result !== "List of devices attached\n\n";
+}
+
+let isRunning = true;
+
+/**
+ * Continuously polls the device status and updates the UI.
+ */
+async function pollingLoop() {
+  while (isRunning) {
+    try {
+      const deviceOnline = await pollDevice();
+      const statusIndicator = document.getElementById("status-indicator");
+
+      if (deviceOnline) {
+        statusIndicator.style.border = "5px solid green";
+        statusIndicator.style.color = "green";
+        statusIndicator.textContent = "Device Status: Connected";
+      } else {
+        statusIndicator.style.border = "5px dashed red";
+        statusIndicator.style.color = "red";
+        statusIndicator.textContent = "Device Status: Offline";
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    } catch (error) {
+      console.error("Fatal control loop error:", error);
+      isRunning = false;
+    }
+  }
+}
+
+pollingLoop().catch((error) => {
+  console.error("Fatal control loop error:", error);
+  isRunning = false;
+});
+
+/**
+ * Temporarily enforces screenshot saving for 501ms.
+ */
 async function photoSaveController() {
   try {
     saveScreenshots = true;
     setTimeout(() => {
-      saveScreenshots = !saveScreenshots;
-    }, 501);
+      saveScreenshots = false;
+    }, 1000);
   } catch (error) {
     console.log(error);
   }

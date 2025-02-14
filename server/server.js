@@ -1,5 +1,5 @@
 const express = require("express");
-const { shouldKeepScreenshot } = require("./utilities");
+const { checkAndUpdateScreenshot } = require("./utilities");
 const fs = require("fs").promises;
 const cors = require("cors");
 const path = require("path");
@@ -32,31 +32,25 @@ app.post("/api/adb", async (req, res) => {
 
 app.post("/api/screenshot", async (req, res) => {
   try {
+    // Get count first since we need it for comparison
     const files = await fs.readdir("./public/screencaps");
     const currentCount = files.length;
 
-    await execFileAsync("./platform-tools/adb", [
-      "shell",
-      "screencap",
-      "-p",
-      "/sdcard/screencap.png",
-    ]);
+    // Instead of screencap to file then pull, use exec-out to get PNG data directly
+    const { stdout } = await execFileAsync(
+      "./platform-tools/adb",
+      ["exec-out", "screencap -p"],
+      { maxBuffer: 25 * 1024 * 1024, encoding: "buffer" }
+    );
 
-    await execFileAsync("./platform-tools/adb", [
-      "pull",
-      "/sdcard/screencap.png",
-    ]);
+    const screenshotBuffer = stdout;
 
-    const filename = `screenshot${currentCount}.png`;
-    const screenshotPath = path.join("./public/screencaps", filename);
-
-    await fs.rename("./screencap.png", screenshotPath);
-
+    // Check if we should keep before sending
     const shouldKeep =
-      req.body.saveScreenshot || (await shouldKeepScreenshot(currentCount));
+      req.body.saveScreenshot ||
+      (await checkAndUpdateScreenshot(screenshotBuffer));
 
     if (currentCount != 0 && !shouldKeep) {
-      await fs.unlink(screenshotPath);
       res.json({
         success: true,
         kept: false,
@@ -65,14 +59,22 @@ app.post("/api/screenshot", async (req, res) => {
       return;
     }
 
-    res.json({
-      success: true,
-      kept: true,
-      path: screenshotPath,
-      filename: "/screencaps/" + filename,
-      message: `Screenshot saved as ${filename}`,
-      count: currentCount,
+    // If keeping, save file asynchronously after sending response
+    const filename = `screenshot${currentCount}.png`;
+    if (shouldKeep) {
+      fs.writeFile(
+        path.join("./public/screencaps", filename),
+        screenshotBuffer
+      ).catch(console.error);
+    }
+
+    // Send buffer directly
+    res.set({
+      "Content-Type": "image/png",
+      "X-Screenshot-Count": currentCount,
+      "X-Screenshot-Filename": filename,
     });
+    res.send(screenshotBuffer);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
