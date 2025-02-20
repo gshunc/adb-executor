@@ -1,4 +1,5 @@
 const express = require("express");
+require("dotenv").config();
 const { checkAndUpdateScreenshot } = require("./utilities");
 const fs = require("fs").promises;
 const cors = require("cors");
@@ -8,6 +9,13 @@ const util = require("util");
 const app = express();
 const adbPath = process.env.ADB_PATH;
 const execFileAsync = util.promisify(execFile);
+const OpenAI = require("openai");
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openai = new OpenAI({
+  apiKey: openaiApiKey,
+  organization: "org-M5bbHKG9FdHkKrOqHzDxVc3R",
+  project: "proj_RAuvfuwRyarO0VoX7GmVgEVT",
+});
 
 app.use(cors());
 app.use(express.json());
@@ -68,11 +76,39 @@ app.post("/api/screenshot", async (req, res) => {
       ).catch(console.error);
     }
 
-    // Send buffer directly
+    const image_completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "In the image you will see a screen playing 2048. Determine an optimal move step by step, and then verify that your answer is possible. Give your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/png;base64,${screenshotBuffer.toString(
+                  "base64"
+                )}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const analysisJson = JSON.parse(
+      image_completion.choices[0].message.content
+    );
+
     res.set({
       "Content-Type": "image/png",
       "X-Screenshot-Count": currentCount,
       "X-Screenshot-Filename": filename,
+      "X-Image-Completion": JSON.stringify(analysisJson),
     });
     res.send(screenshotBuffer);
   } catch (error) {

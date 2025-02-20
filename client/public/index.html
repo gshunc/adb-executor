@@ -13,10 +13,13 @@
           <div class="command-buttons">
             <button onclick="executeCommand('devices')">List Devices</button>
             <button onclick="eventLoop()" id="device-starter">
-              Start Device Use
+              Play Continiously
             </button>
             <button onclick="stopScreenshotLoop()" id="device-stopper" disabled>
-              Stop Device Use
+              Stop Continious Play
+            </button>
+            <button onclick="takeScreenshot()" id="one-step">
+              Play One Step
             </button>
             <button onclick="goHome()">Return to Home</button>
             <button onclick="scrollUp()">Scroll Up</button>
@@ -45,6 +48,13 @@
 
           <div class="output-container">
             <pre id="output">No output yet...</pre>
+          </div>
+
+          <div class="output-container">
+            <div style="text-decoration: underline; margin-bottom: 5px">
+              LLM Resoning Output
+            </div>
+            <pre id="llm-output">No output yet...</pre>
           </div>
         </div>
 

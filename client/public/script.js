@@ -75,6 +75,28 @@ async function takeScreenshot(saveScreenshots, command, args = []) {
       "clear-photos"
     ).textContent = `Clear Photos: ${count} photo(s)`;
 
+    const model_response = JSON.parse(
+      response.headers.get("X-Image-Completion")
+    );
+
+    switch (model_response.direction) {
+      case "down":
+        await scrollDown();
+      case "up":
+        await scrollUp();
+      case "right":
+        await scrollRight();
+      case "left":
+        await scrollLeft();
+    }
+
+    const llmOutput = document.getElementById("llm-output");
+
+    if (llmOutput.textContent == "No output yet...") {
+      llmOutput.textContent = "";
+    }
+    llmOutput.textContent += model_response.reasoning + "\n";
+
     output.textContent = `Screenshot captured`;
 
     // Clean up the blob URL when the image loads to prevent memory leaks
@@ -184,6 +206,30 @@ async function scrollDown() {
   try {
     await photoSaveController();
     await executeCommand("shell", ["input", "swipe", 500, 1000, 300, 300]);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/**
+ * Scrolls left on the device screen.
+ */
+async function scrollLeft() {
+  try {
+    await photoSaveController();
+    await executeCommand("shell", ["input", "swipe", 300, 500, 1000, 500]);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/**
+ * Scrolls right on the device screen.
+ */
+async function scrollRight() {
+  try {
+    await photoSaveController();
+    await executeCommand("shell", ["input", "swipe", 1000, 500, 300, 500]);
   } catch (error) {
     console.error(error);
   }
