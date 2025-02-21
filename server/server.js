@@ -40,11 +40,7 @@ app.post("/api/adb", async (req, res) => {
 
 app.post("/api/screenshot", async (req, res) => {
   try {
-    // Get count first since we need it for comparison
-    const files = await fs.readdir("./public/screencaps");
-    const currentCount = files.length;
-
-    // Instead of screencap to file then pull, use exec-out to get PNG data directly
+    // Get screenshot data directly
     const { stdout } = await execFileAsync(
       "./platform-tools/adb",
       ["exec-out", "screencap -p"],
@@ -53,38 +49,26 @@ app.post("/api/screenshot", async (req, res) => {
 
     const screenshotBuffer = stdout;
 
-    // Check if we should keep before sending
-    const shouldKeep =
-      req.body.saveScreenshot ||
-      (await checkAndUpdateScreenshot(screenshotBuffer));
-
-    if (currentCount != 0 && !shouldKeep) {
-      res.json({
-        success: true,
-        kept: false,
-        message: "Screenshot too similar to previous, discarded",
-      });
-      return;
-    }
-
-    // If keeping, save file asynchronously after sending response
-    const filename = `screenshot${currentCount}.png`;
-    if (shouldKeep) {
-      fs.writeFile(
-        path.join("./public/screencaps", filename),
-        screenshotBuffer
-      ).catch(console.error);
-    }
-
     const image_completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "text",
+              text: "You are a game playing agent. Given an image of a 2048 game screen, it's your task to intelligently determine the best move. Think like a strategist. Carefully analyze the positions of the blocks, and determine how you can best accomplish the user's strategy. Tightly adhere to the user's entered strategy even if it's bad, but do the best you can with it. Determine an optimal move step by step, and then verify that your answer is possible. Give a detailed account of your reasoning in determining the optimal move. Return your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
+            },
+          ],
+        },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "In the image you will see a screen playing 2048. Determine an optimal move step by step, and then verify that your answer is possible. Give your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
+              text:
+                "This is how I would like you to play the game: " +
+                req.body.userPrompt,
             },
             {
               type: "image_url",
@@ -104,11 +88,38 @@ app.post("/api/screenshot", async (req, res) => {
       image_completion.choices[0].message.content
     );
 
+    res.json(analysisJson);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/screenshot/capture", async (req, res) => {
+  try {
+    // Get count first since we need it for comparison
+    const files = await fs.readdir("./public/screencaps");
+    const currentCount = files.length;
+
+    // Use exec-out to get PNG data directly
+    const { stdout } = await execFileAsync(
+      "./platform-tools/adb",
+      ["exec-out", "screencap -p"],
+      { maxBuffer: 25 * 1024 * 1024, encoding: "buffer" }
+    );
+
+    const screenshotBuffer = stdout;
+
+    // Save file asynchronously
+    const filename = `screenshot${currentCount}.png`;
+    fs.writeFile(
+      path.join("./public/screencaps", filename),
+      screenshotBuffer
+    ).catch(console.error);
+
     res.set({
       "Content-Type": "image/png",
       "X-Screenshot-Count": currentCount,
-      "X-Screenshot-Filename": filename,
-      "X-Image-Completion": JSON.stringify(analysisJson),
+      "X-Screenshot-Filename": filename
     });
     res.send(screenshotBuffer);
   } catch (error) {
