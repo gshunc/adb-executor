@@ -1,29 +1,33 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>ADB Web Interface</title>
+    <title>2048 Agent</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
-      <h1>ADB Web Interface</h1>
+      <h1>2048 Agent</h1>
 
       <div class="main-interface">
         <div class="control-panel">
           <div class="command-buttons">
-            <button onclick="executeCommand('devices')">List Devices</button>
             <button onclick="eventLoop()" id="device-starter">
               Play Continiously
             </button>
             <button onclick="stopScreenshotLoop()" id="device-stopper" disabled>
               Stop Continious Play
             </button>
-            <button onclick="takeScreenshot()" id="one-step">
+            <button onclick="screenshotAndMove()" id="one-step">
               Play One Step
             </button>
-            <button onclick="goHome()">Return to Home</button>
-            <button onclick="scrollUp()">Scroll Up</button>
-            <button onclick="scrollDown()">Scroll Down</button>
+
+            <div class="device-controls">
+              <!-- <button onclick="goHome()">Return to Home</button> -->
+              <button onclick="swipeUp()">Swipe Up</button>
+              <button onclick="swipeDown()">Swipe Down</button>
+              <button onclick="swipeRight()">Swipe Right</button>
+              <button onclick="swipeLeft()">Swipe Left</button>
+            </div>
             <button onclick="clearPhotos()" id="clear-photos">
               Clear Photos
             </button>
@@ -32,9 +36,9 @@
             </button>
           </div>
 
-          <div class="input-controls">
+          <!-- <div class="input-controls">
             <div class="text-input">
-              <h3>Enter Text</h3>
+              <h3>Enter Text into Device</h3>
               <div class="text-input-group">
                 <input
                   type="text"
@@ -44,17 +48,19 @@
                 <button onclick="typeText()">Enter</button>
               </div>
             </div>
-          </div>
+          </div> -->
 
-          <div class="output-container">
-            <pre id="output">No output yet...</pre>
-          </div>
-
-          <div class="output-container">
-            <div style="text-decoration: underline; margin-bottom: 5px">
-              LLM Resoning Output
+          <div class="input-controls">
+            <div class="text-input">
+              <h3>How would you like to play?</h3>
+              <div class="text-input-group">
+                <textarea
+                  id="prompt-input"
+                  class="prompt-input"
+                  placeholder="Enter prompt here..."
+                ></textarea>
+              </div>
             </div>
-            <pre id="llm-output">No output yet...</pre>
           </div>
         </div>
 
@@ -62,6 +68,10 @@
           <div class="screenshot-container">
             <img id="device-screen" style="display: none" />
           </div>
+        </div>
+        <div class="reasoning-view">
+          <h3>LLM Reasoning Output</h3>
+          <pre id="llm-output">No output yet...</pre>
         </div>
       </div>
     </div>

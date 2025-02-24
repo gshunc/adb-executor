@@ -1,4 +1,3 @@
-let saveScreenshots = false; // Tracks whether screenshots should be saved
 let isScreenshotLoopRunning = false; // Tracks if the screenshot loop is active
 
 /**
@@ -7,9 +6,6 @@ let isScreenshotLoopRunning = false; // Tracks if the screenshot loop is active
  * @param {Array} args - Optional arguments for the command.
  */
 async function executeCommand(command, args = []) {
-  const output = document.getElementById("output");
-  output.textContent = "Executing command...";
-
   try {
     const response = await fetch("/api/adb", {
       method: "POST",
@@ -20,34 +16,62 @@ async function executeCommand(command, args = []) {
     });
 
     const data = await response.json();
-    if (response.ok) {
-      output.textContent = data.result; // Display command result
-    } else {
-      output.textContent = `Error: ${data.error}`; // Display error from server
-    }
   } catch (error) {
-    output.textContent = `Error: ${error.message}`; // Display network or other errors
+    console.log(error);
+  }
+}
+
+/**
+ * Takes a screenshot using the simplified capture endpoint.
+ * @returns {Promise<void>}
+ */
+async function captureScreenshot() {
+  try {
+    const response = await fetch("/api/screenshot/capture", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const imageBlob = await response.blob();
+    const screenshotCount = response.headers.get("X-Screenshot-Count");
+    const screenshotFilename = response.headers.get("X-Screenshot-Filename");
+
+    // Update the screenshot display
+    const screenshotImg = document.getElementById("device-screen");
+    screenshotImg.src = URL.createObjectURL(imageBlob);
+    screenshotImg.style.display = "block";
+
+    document.getElementById(
+      "clear-photos"
+    ).textContent = `Clear Photos: ${screenshotCount} photo(s)`;
+  } catch (error) {
+    console.error("Error taking screenshot:", error);
+    document.getElementById(
+      "status"
+    ).textContent = `Error taking screenshot: ${error.message}`;
   }
 }
 
 /**
  * Takes a screenshot and updates the UI with the result.
- * @param {boolean} saveScreenshots - Whether to save the screenshot.
  * @param {string} command - The command to execute.
  * @param {Array} args - Optional arguments for the command.
  */
-async function takeScreenshot(saveScreenshots, command, args = []) {
-  const output = document.getElementById("output");
-  const deviceScreen = document.getElementById("device-screen");
-  output.textContent = "Taking screenshot...";
+async function screenshotAndMove(command, args = []) {
+  const promptInput = document.getElementById("prompt-input");
+  const reasoningOutput = document.getElementById("llm-output");
 
   try {
-    const response = await fetch("/api/screenshot", {
+    const userPrompt = promptInput.value;
+    const response = await fetch("/api/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ command, args, saveScreenshots }),
+      body: JSON.stringify({ command, args, userPrompt }),
     });
 
     if (!response.ok) {
@@ -55,54 +79,29 @@ async function takeScreenshot(saveScreenshots, command, args = []) {
       throw new Error(errorData.error || "Screenshot failed");
     }
 
-    // If it's a JSON response (for discarded screenshots), handle that
-    if (response.headers.get("Content-Type").includes("application/json")) {
-      const data = await response.json();
-      output.textContent = data.message;
-      return;
-    }
-
-    // For image responses, create a blob URL
-    const blob = await response.blob();
-    const imageUrl = URL.createObjectURL(blob);
-
-    deviceScreen.src = imageUrl;
-    deviceScreen.style.display = "block";
-
-    // Get metadata from headers
-    const count = response.headers.get("X-Screenshot-Count");
-    document.getElementById(
-      "clear-photos"
-    ).textContent = `Clear Photos: ${count} photo(s)`;
-
-    const model_response = JSON.parse(
-      response.headers.get("X-Image-Completion")
-    );
+    const model_response = await response.json();
 
     switch (model_response.direction) {
       case "down":
-        await scrollDown();
+        await swipeDown();
+        break;
       case "up":
-        await scrollUp();
+        await swipeUp();
+        break;
       case "right":
-        await scrollRight();
+        await swipeRight();
+        break;
       case "left":
-        await scrollLeft();
+        await swipeLeft();
+        break;
     }
 
-    const llmOutput = document.getElementById("llm-output");
-
-    if (llmOutput.textContent == "No output yet...") {
-      llmOutput.textContent = "";
+    if (reasoningOutput.textContent == "No output yet...") {
+      reasoningOutput.textContent = "";
     }
-    llmOutput.textContent += model_response.reasoning + "\n";
-
-    output.textContent = `Screenshot captured`;
-
-    // Clean up the blob URL when the image loads to prevent memory leaks
-    deviceScreen.onload = () => URL.revokeObjectURL(imageUrl);
+    reasoningOutput.textContent += model_response.reasoning + "\n\n";
   } catch (error) {
-    output.textContent = `Error: ${error.message}`;
+    console.error(error);
   }
 }
 
@@ -110,19 +109,16 @@ async function takeScreenshot(saveScreenshots, command, args = []) {
  * Sends text input to the device.
  */
 async function typeText() {
-  await photoSaveController();
   const input = document.getElementById("input-text").value;
 
   if (!input) {
-    document.getElementById("output").textContent =
-      "Please enter a string to be typed.";
     return; // Exit if no input is provided
   }
 
   try {
     await executeCommand("shell", ["input", "text", `"${input}"`]);
   } catch (error) {
-    document.getElementById("output").textContent = `Error: ${error.message}`;
+    console.error(error);
   }
 }
 
@@ -131,7 +127,6 @@ async function typeText() {
  * @param {Event} e - The click event.
  */
 async function pressScreen(e) {
-  await photoSaveController();
   const cursorX = e.pageX;
   const cursorY = e.pageY;
 
@@ -180,7 +175,6 @@ document
  */
 async function goHome() {
   try {
-    await photoSaveController();
     await executeCommand("shell", ["input", "keyevent", "KEYCODE_HOME"]);
   } catch (error) {
     console.error(error);
@@ -188,48 +182,48 @@ async function goHome() {
 }
 
 /**
- * Scrolls up on the device screen.
+ * Swipes down on the device screen.
  */
-async function scrollUp() {
+async function swipeUp() {
   try {
-    await photoSaveController();
-    await executeCommand("shell", ["input", "swipe", 300, 300, 500, 1000]);
+    await executeCommand("shell", ["input", "swipe", 500, 1000, 500, 500]);
+    await captureScreenshot();
   } catch (error) {
     console.error(error);
   }
 }
 
 /**
- * Scrolls down on the device screen.
+ * swipes up on the device screen.
  */
-async function scrollDown() {
+async function swipeDown() {
   try {
-    await photoSaveController();
-    await executeCommand("shell", ["input", "swipe", 500, 1000, 300, 300]);
+    await executeCommand("shell", ["input", "swipe", 500, 500, 500, 1000]);
+    await captureScreenshot();
   } catch (error) {
     console.error(error);
   }
 }
 
 /**
- * Scrolls left on the device screen.
+ * swipes left on the device screen.
  */
-async function scrollLeft() {
+async function swipeRight() {
   try {
-    await photoSaveController();
-    await executeCommand("shell", ["input", "swipe", 300, 500, 1000, 500]);
+    await executeCommand("shell", ["input", "swipe", 100, 500, 500, 500]);
+    await captureScreenshot();
   } catch (error) {
     console.error(error);
   }
 }
 
 /**
- * Scrolls right on the device screen.
+ * swipes right on the device screen.
  */
-async function scrollRight() {
+async function swipeLeft() {
   try {
-    await photoSaveController();
-    await executeCommand("shell", ["input", "swipe", 1000, 500, 300, 500]);
+    await executeCommand("shell", ["input", "swipe", 500, 500, 100, 500]);
+    await captureScreenshot();
   } catch (error) {
     console.error(error);
   }
@@ -267,12 +261,13 @@ async function eventLoop() {
   isScreenshotLoopRunning = true;
   document.getElementById("clear-photos").disabled = true;
   document.getElementById("clear-photos").style.background = "gray";
-  document.getElementById("device-starter").style.color = "lime";
+  document.getElementById("device-starter").style.background = "green";
   document.getElementById("device-stopper").style.background = "#007bff";
   document.getElementById("device-stopper").disabled = false;
 
   while (isScreenshotLoopRunning) {
-    await takeScreenshot();
+    await screenshotAndMove();
+    await captureScreenshot();
   }
 }
 
@@ -281,7 +276,7 @@ async function eventLoop() {
  */
 function stopScreenshotLoop() {
   isScreenshotLoopRunning = false;
-  document.getElementById("device-starter").style.color = "maroon";
+  document.getElementById("device-starter").style.background = "maroon";
   document.getElementById("clear-photos").disabled = false;
   document.getElementById("clear-photos").style.background = "#007bff";
   document.getElementById("device-stopper").style.background = "gray";
@@ -340,17 +335,3 @@ pollingLoop().catch((error) => {
   console.error("Fatal control loop error:", error);
   isRunning = false;
 });
-
-/**
- * Temporarily enforces screenshot saving for 501ms.
- */
-async function photoSaveController() {
-  try {
-    saveScreenshots = true;
-    setTimeout(() => {
-      saveScreenshots = false;
-    }, 1000);
-  } catch (error) {
-    console.log(error);
-  }
-}

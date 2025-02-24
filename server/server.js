@@ -6,6 +6,7 @@ const cors = require("cors");
 const path = require("path");
 const { execFile } = require("child_process");
 const util = require("util");
+const sharp = require("sharp");
 const app = express();
 const adbPath = process.env.ADB_PATH;
 const execFileAsync = util.promisify(execFile);
@@ -38,7 +39,7 @@ app.post("/api/adb", async (req, res) => {
   }
 });
 
-app.post("/api/screenshot", async (req, res) => {
+app.post("/api/analyze", async (req, res) => {
   try {
     // Get screenshot data directly
     const { stdout } = await execFileAsync(
@@ -47,17 +48,20 @@ app.post("/api/screenshot", async (req, res) => {
       { maxBuffer: 25 * 1024 * 1024, encoding: "buffer" }
     );
 
-    const screenshotBuffer = stdout;
+    const screenshotBuffer = await sharp(stdout)
+      .resize({ width: 512 })
+      .jpeg({ quality: 80 })
+      .toBuffer();
 
-    const image_completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const chat_completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content: [
             {
               type: "text",
-              text: "You are a game playing agent. Given an image of a 2048 game screen, it's your task to intelligently determine the best move. Think like a strategist. Carefully analyze the positions of the blocks, and determine how you can best accomplish the user's strategy. Tightly adhere to the user's entered strategy even if it's bad, but do the best you can with it. Determine an optimal move step by step, and then verify that your answer is possible. Give a detailed account of your reasoning in determining the optimal move. Return your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
+              text: "Given an image of a 2048 game screen, it's your task to determine the best move. Carefully analyze the positions of the number blocks, and determine how you can best accomplish the user's strategy. Tightly adhere to the user's entered strategy even if it's bad. Game rules: only like tiles can merge. If you cannot merge any tiles, make a move that best sets you up for future moves. Determine an optimal move and verify that your answer is possible. Return your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
             },
           ],
         },
@@ -82,11 +86,35 @@ app.post("/api/screenshot", async (req, res) => {
         },
       ],
       response_format: { type: "json_object" },
+      n: 1,
     });
 
-    const analysisJson = JSON.parse(
-      image_completion.choices[0].message.content
-    );
+    // const manager_choice = await openai.chat.completions.create({
+    //   model: "gpt-4o",
+    //   messages: [
+    //     {
+    //       role: "system",
+    //       content: [
+    //         {
+    //           type: "text",
+    //           text: "Given these potential moves, decide the best move and output as a json object {direction: string, reasoning: string}",
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       role: "user",
+    //       content: [
+    //         {
+    //           type: "text",
+    //           text: chat_completion.choices[0].message.content,
+    //         },
+    //       ],
+    //     },
+    //   ],
+    //   response_format: { type: "json_object" },
+    // });
+
+    const analysisJson = JSON.parse(chat_completion.choices[0].message.content);
 
     res.json(analysisJson);
   } catch (error) {
@@ -119,7 +147,7 @@ app.post("/api/screenshot/capture", async (req, res) => {
     res.set({
       "Content-Type": "image/png",
       "X-Screenshot-Count": currentCount,
-      "X-Screenshot-Filename": filename
+      "X-Screenshot-Filename": filename,
     });
     res.send(screenshotBuffer);
   } catch (error) {
