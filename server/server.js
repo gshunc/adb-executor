@@ -12,10 +12,12 @@ const adbPath = process.env.ADB_PATH;
 const execFileAsync = util.promisify(execFile);
 const OpenAI = require("openai");
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const openaiOrganization = process.env.OPENAI_ORGANIZATION;
+const openaiProject = process.env.OPENAI_PROJECT;
 const openai = new OpenAI({
   apiKey: openaiApiKey,
-  organization: "org-M5bbHKG9FdHkKrOqHzDxVc3R",
-  project: "proj_RAuvfuwRyarO0VoX7GmVgEVT",
+  organization: openaiOrganization,
+  project: openaiProject,
 });
 
 app.use(cors());
@@ -24,6 +26,10 @@ app.use(express.static(path.join(__dirname, "../client/public")));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/public/index.html"));
+});
+
+app.listen(3000, () => {
+  console.log("Server running on http://localhost:3000");
 });
 
 app.post("/api/adb", async (req, res) => {
@@ -153,10 +159,6 @@ app.post("/api/screenshot/capture", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
 });
 
 app.post("/api/tap", async (req, res) => {
