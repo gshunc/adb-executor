@@ -79,20 +79,6 @@ async function shouldKeepScreenshot(currentBuffer, previousBuffer) {
   return false;
 }
 
-// Store the last screenshot buffer in memory
-let previousScreenshotBuffer = null;
-
-async function checkAndUpdateScreenshot(newBuffer) {
-  const shouldKeep = await shouldKeepScreenshot(
-    newBuffer,
-    previousScreenshotBuffer
-  );
-  if (shouldKeep) {
-    previousScreenshotBuffer = newBuffer;
-  }
-  return shouldKeep;
-}
-
 module.exports = {
-  checkAndUpdateScreenshot,
+  shouldKeepScreenshot,
 };
