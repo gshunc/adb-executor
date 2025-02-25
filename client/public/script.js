@@ -160,6 +160,7 @@ async function pressScreen(e) {
       convertedXOffset,
       convertedYOffset,
     ]);
+    await Promise.all([captureScreenshot(), setTimeout(resolve, 200)]);
   } catch (error) {
     console.error(error);
   }
