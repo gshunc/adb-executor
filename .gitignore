@@ -1,4 +1,4 @@
 node_modules
 server/public/screencaps
 .env
-server/platform-tools
+platform-tools
