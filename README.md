@@ -4,8 +4,12 @@ ADB Executor is a project for my mentored research at UNC. The goal of it is to 
 
 ## Startup
 
-This project uses a node backend with Express JS. Install node, npm i, npm run start. Will have to cd into the server folder and install android platform tools.
+This project uses a node backend. Install node, npm i, npm run start.
+
+Visit this page: https://developer.android.com/tools/releases/platform-tools#downloads, and download the android platform tools. Place them in the root directory of the project.
+
+Start the server by running npm run start.
 
 ### Device Usage
 
-In order to use the software, you will have to connect an android device over USB-C or use the ADV (android virtual device) emulator.
+In order to use the software, you will have to connect an android device over USB-C or use the AVD (android virtual device) emulator inside of Android Studio.
