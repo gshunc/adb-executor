@@ -8,7 +8,7 @@ class GameAnalyzer {
       content: [
         {
           type: "text",
-          text: "Given an image of a 2048 game screen, it's your task to determine the best move. Carefully analyze the positions of the number blocks, and determine how you can best accomplish the user's strategy. Tightly adhere to the user's entered strategy even if it's bad. Game rules: only like tiles can merge. Determine an optimal move and verify that your answer is possible. Only like tiles can be merged, for example 4+4 or 8+8, but not 4+2 or 8+4. Return your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
+          text: "Given an image of a 2048 game screen, it's your task to determine the best move. Carefully analyze the positions of the number blocks, and determine how you can best accomplish the user's strategy. Create a matrix representing the screen, and decide based on that how to make a move and put this into your reasoning response. Tightly adhere to the user's entered strategy even if it's bad. Game rules: only like tiles can merge. Determine an optimal move and verify that your answer is possible. Only like tiles can be merged, for example 4+4 or 8+8, but not 4+2 or 8+4. Return your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
         },
       ],
     };

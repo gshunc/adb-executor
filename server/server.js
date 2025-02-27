@@ -75,7 +75,7 @@ app.post("/api/analyze", async (req, res) => {
 app.post("/api/screenshot/capture", async (req, res) => {
   try {
     // Get count first since we need it for comparison
-    const files = await fs.readdir("./public/screencaps");
+    const files = await fs.readdir("./server/public/screencaps");
     const currentCount = files.length;
 
     // Use exec-out to get PNG data directly
@@ -90,7 +90,7 @@ app.post("/api/screenshot/capture", async (req, res) => {
     // Save file asynchronously
     const filename = `screenshot${currentCount}.png`;
     fs.writeFile(
-      path.join("./public/screencaps", filename),
+      path.join("./server/public/screencaps", filename),
       screenshotBuffer
     ).catch(console.error);
 
