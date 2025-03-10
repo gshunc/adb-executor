@@ -1,5 +1,5 @@
-const express = require("express");
 require("dotenv").config();
+const express = require("express");
 const fs = require("fs").promises;
 const cors = require("cors");
 const path = require("path");
@@ -187,6 +187,102 @@ app.post("/api/model/provider", (req, res) => {
     res.json({ success: true, provider });
   } catch (error) {
     console.error("Error setting model provider:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to log model output directions to a file
+app.post("/api/log-direction", async (req, res) => {
+  try {
+    const { direction, reasoning, timestamp, userPrompt } = req.body;
+    
+    // Create logs directory if it doesn't exist
+    const logsDir = path.join(__dirname, "logs");
+    try {
+      await fs.access(logsDir);
+    } catch (error) {
+      // Directory doesn't exist, create it
+      await fs.mkdir(logsDir, { recursive: true });
+    }
+    
+    // Ensure we have a valid userPrompt to use for embedding comparisons
+    const validUserPrompt = userPrompt || '';
+    
+    // Format the log entry
+    const logEntry = JSON.stringify({
+      direction,
+      reasoning,
+      timestamp,
+      userPrompt: validUserPrompt
+    }, null, 2);
+    
+    // Append to a log file with timestamp in filename
+    const logFilePath = path.join(logsDir, "model_directions.jsonl");
+    await fs.appendFile(logFilePath, logEntry + "\n");
+    
+    res.json({ success: true, message: "Direction logged successfully" });
+  } catch (error) {
+    console.error("Error logging direction:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to clear the logs
+app.post("/api/clear-logs", async (req, res) => {
+  try {
+    const logsDir = path.join(__dirname, "logs");
+    const logFilePath = path.join(logsDir, "model_directions.jsonl");
+    
+    // Create logs directory if it doesn't exist
+    try {
+      await fs.access(logsDir);
+    } catch (error) {
+      // Directory doesn't exist, create it
+      await fs.mkdir(logsDir, { recursive: true });
+    }
+    
+    // Clear the log file by writing an empty string
+    await fs.writeFile(logFilePath, "");
+    
+    console.log("Logs cleared successfully");
+    res.json({ success: true, message: "Logs cleared successfully" });
+  } catch (error) {
+    console.error("Error clearing logs:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to get the analysis statistics including cosine similarity data
+app.get("/api/stats", async (req, res) => {
+  try {
+    const logsDir = path.join(__dirname, "logs");
+    const statsFilePath = path.join(logsDir, "stats.json");
+    
+    // Check if stats file exists
+    try {
+      await fs.access(statsFilePath);
+    } catch (error) {
+      // Return empty stats if file doesn't exist
+      return res.json({
+        userPrompt: "",
+        totalEntries: 0,
+        directionCounts: {},
+        percentages: {},
+        similarityAnalysis: {
+          overallAverage: 0,
+          byDirection: {},
+          similarityScores: []
+        }
+      });
+    }
+    
+    // Read the stats file
+    const statsData = await fs.readFile(statsFilePath, "utf-8");
+    const stats = JSON.parse(statsData);
+    
+    res.json(stats);
+  } catch (error) {
+    console.error("Error retrieving stats:", error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -65,6 +65,8 @@ async function screenshotAndMove(command, args = []) {
   const reasoningOutput = document.getElementById("llm-output");
 
   try {
+    reasoningOutput.textContent = "No output yet...";
+
     const userPrompt = promptInput.value;
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -81,17 +83,31 @@ async function screenshotAndMove(command, args = []) {
 
     const model_response = await response.json();
 
+    // Log the model output direction to a file on the server
+    await fetch("/api/log-direction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        direction: model_response.direction,
+        reasoning: model_response.reasoning,
+        timestamp: new Date().toISOString(),
+        userPrompt: userPrompt,
+      }),
+    });
+
     switch (model_response.direction) {
-      case "down":
+      case "DOWN":
         await swipeDown();
         break;
-      case "up":
+      case "UP":
         await swipeUp();
         break;
-      case "right":
+      case "RIGHT":
         await swipeRight();
         break;
-      case "left":
+      case "LEFT":
         await swipeLeft();
         break;
     }
@@ -100,6 +116,9 @@ async function screenshotAndMove(command, args = []) {
       reasoningOutput.textContent = "";
     }
     reasoningOutput.textContent += model_response.reasoning + "\n\n";
+
+    // Auto-scroll to the bottom of the reasoning output
+    reasoningOutput.scrollTop = reasoningOutput.scrollHeight;
   } catch (error) {
     console.error(error);
   }
@@ -265,6 +284,34 @@ async function eventLoop() {
   document.getElementById("device-starter").style.background = "green";
   document.getElementById("device-stopper").style.background = "#007bff";
   document.getElementById("device-stopper").disabled = false;
+
+  // Clear logs when event loop starts
+  try {
+    await fetch("/api/clear-logs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    console.log("Logs cleared successfully");
+  } catch (error) {
+    console.error("Error clearing logs:", error);
+  }
+
+  const userPrompt = document.getElementById("prompt-input").value;
+
+  await fetch("/api/log-direction", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      direction: "USER STRATEGY",
+      reasoning: "INITIAL USER STRATEGY CHECKPOINT",
+      timestamp: new Date().toISOString(),
+      userPrompt: userPrompt,
+    }),
+  });
 
   while (isScreenshotLoopRunning) {
     await screenshotAndMove();

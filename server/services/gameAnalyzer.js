@@ -1,4 +1,5 @@
 const { shouldKeepScreenshot } = require("./imageProcessor");
+const { analyzeResponses } = require("../data_scripts/analyze_responses");
 
 class GameAnalyzer {
   constructor(openaiClient) {
@@ -8,7 +9,7 @@ class GameAnalyzer {
       content: [
         {
           type: "text",
-          text: "Given an image of a 2048 game screen, it's your task to determine the best move. Carefully analyze the positions of the number blocks, and determine how you can best accomplish the user's strategy. Create a matrix representing the screen, and decide based on that how to make a move and put this into your reasoning response. Tightly adhere to the user's entered strategy even if it's bad. Game rules: only like tiles can merge. Determine an optimal move and verify that your answer is possible. Only like tiles can be merged, for example 4+4 or 8+8, but not 4+2 or 8+4. Return your answer as a json object similar to what follows: {direction: string, reasoning: string}.",
+          text: 'Given an image of a 2048 game screen, your task is to determine the best move. Analyze the board carefully and recommend a move that aligns with the user\'s strategy.\n\nGAME RULES:\n1. The game is played on a 4x4 grid with numbered tiles.\n2. Tiles can be moved in four directions: UP, DOWN, LEFT, or RIGHT.\n3. When moved, all tiles slide as far as possible in the chosen direction.\n4. Only tiles with IDENTICAL values can merge when they collide during a move (e.g., 2+2=4, 4+4=8, 8+8=16, etc.).\n5. Each merge creates a new tile with the sum of the merged tiles.\n6. Tiles CANNOT merge more than once in a single move.\n7. After each move, a new tile (either 2 or 4) appears randomly on an empty cell.\n8. The game ends when the board is full and no more moves are possible.\n\nANALYSIS PROCESS:\n1. Create a 4x4 matrix representing the current board state.\n2. Evaluate the potential outcomes of each possible move (UP, DOWN, LEFT, RIGHT).\n3. Consider the user\'s strategy when determining the optimal move.\n4. Verify that your proposed move is valid and possible given the current board state.\n\nReturn your answer as a JSON object with this structure:\n{\n  "direction": "UP|DOWN|LEFT|RIGHT",\n  "reasoning": "Detailed explanation of why this is the best move based on the user\'s strategy and current board state"\n}.',
         },
       ],
     };
@@ -18,6 +19,7 @@ class GameAnalyzer {
     this.currentScreenshotBuffer = null;
     this.lastMove = null; // Track the last move made
     this.stuckMoveCount = 0; // Count consecutive times the screen hasn't changed
+    this.moveCounter = 0;
   }
 
   /**
@@ -27,6 +29,13 @@ class GameAnalyzer {
    * @returns {Object} The analysis result with direction and reasoning
    */
   async analyzeGameState(userPrompt, screenshotBuffer) {
+    this.moveCounter++;
+    if (this.moveCounter % 30 === 0) {
+      userPrompt == ""
+        ? await analyzeResponses(true)
+        : await analyzeResponses(false);
+    }
+
     try {
       // Process the screenshot and check if it changed
       await this.processScreenshot(screenshotBuffer);
