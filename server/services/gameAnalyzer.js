@@ -1,5 +1,6 @@
 const { shouldKeepScreenshot } = require("./imageProcessor");
 const { analyzeResponses } = require("../data_scripts/analyze_responses");
+require("dotenv").config();
 
 class GameAnalyzer {
   constructor(openaiClient) {
@@ -13,7 +14,7 @@ class GameAnalyzer {
         },
       ],
     };
-    this.modelProvider = "gpt-4o-mini";
+    this.modelProvider = process.env.MODEL_NAME;
     this.screenChanged = false;
     this.previousScreenshotBuffer = null;
     this.currentScreenshotBuffer = null;

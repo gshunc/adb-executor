@@ -65,8 +65,6 @@ async function screenshotAndMove(command, args = []) {
   const reasoningOutput = document.getElementById("llm-output");
 
   try {
-    reasoningOutput.textContent = "No output yet...";
-
     const userPrompt = promptInput.value;
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -286,6 +284,7 @@ async function eventLoop() {
   document.getElementById("device-stopper").disabled = false;
 
   // Clear logs when event loop starts
+  document.getElementById("llm-output").textContent = "No output yet...";
   try {
     await fetch("/api/clear-logs", {
       method: "POST",

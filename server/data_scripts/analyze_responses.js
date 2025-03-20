@@ -3,7 +3,6 @@ const path = require("path");
 const {
   generateEmbedding,
   cosineSimilarity,
-  saveCache,
 } = require("../services/embeddingService");
 
 async function analyzeResponses(dryRun = false) {
@@ -146,8 +145,7 @@ async function analyzeResponses(dryRun = false) {
   console.log("Average similarity by direction:", avgSimilarityByDirection);
   console.log("Overall average similarity:", overallAvgSimilarity);
 
-  // Save the embeddings cache
-  await saveCache();
+  // No need to save cache as it's been removed
 
   // Reset the logs file
   fs.writeFileSync(logFilePath, "");
