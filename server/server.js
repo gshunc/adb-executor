@@ -195,7 +195,7 @@ app.post("/api/model/provider", (req, res) => {
 app.post("/api/log-direction", async (req, res) => {
   try {
     const { direction, reasoning, timestamp, userPrompt } = req.body;
-    
+
     // Create logs directory if it doesn't exist
     const logsDir = path.join(__dirname, "logs");
     try {
@@ -204,22 +204,26 @@ app.post("/api/log-direction", async (req, res) => {
       // Directory doesn't exist, create it
       await fs.mkdir(logsDir, { recursive: true });
     }
-    
+
     // Ensure we have a valid userPrompt to use for embedding comparisons
-    const validUserPrompt = userPrompt || '';
-    
+    const validUserPrompt = userPrompt || "";
+
     // Format the log entry
-    const logEntry = JSON.stringify({
-      direction,
-      reasoning,
-      timestamp,
-      userPrompt: validUserPrompt
-    }, null, 2);
-    
+    const logEntry = JSON.stringify(
+      {
+        direction,
+        reasoning,
+        timestamp,
+        userPrompt: validUserPrompt,
+      },
+      null,
+      2
+    );
+
     // Append to a log file with timestamp in filename
     const logFilePath = path.join(logsDir, "model_directions.jsonl");
     await fs.appendFile(logFilePath, logEntry + "\n");
-    
+
     res.json({ success: true, message: "Direction logged successfully" });
   } catch (error) {
     console.error("Error logging direction:", error);
@@ -232,7 +236,7 @@ app.post("/api/clear-logs", async (req, res) => {
   try {
     const logsDir = path.join(__dirname, "logs");
     const logFilePath = path.join(logsDir, "model_directions.jsonl");
-    
+
     // Create logs directory if it doesn't exist
     try {
       await fs.access(logsDir);
@@ -240,10 +244,10 @@ app.post("/api/clear-logs", async (req, res) => {
       // Directory doesn't exist, create it
       await fs.mkdir(logsDir, { recursive: true });
     }
-    
+
     // Clear the log file by writing an empty string
     await fs.writeFile(logFilePath, "");
-    
+
     console.log("Logs cleared successfully");
     res.json({ success: true, message: "Logs cleared successfully" });
   } catch (error) {
@@ -257,7 +261,7 @@ app.get("/api/stats", async (req, res) => {
   try {
     const logsDir = path.join(__dirname, "logs");
     const statsFilePath = path.join(logsDir, "stats.json");
-    
+
     // Check if stats file exists
     try {
       await fs.access(statsFilePath);
@@ -271,15 +275,15 @@ app.get("/api/stats", async (req, res) => {
         similarityAnalysis: {
           overallAverage: 0,
           byDirection: {},
-          similarityScores: []
-        }
+          similarityScores: [],
+        },
       });
     }
-    
+
     // Read the stats file
     const statsData = await fs.readFile(statsFilePath, "utf-8");
     const stats = JSON.parse(statsData);
-    
+
     res.json(stats);
   } catch (error) {
     console.error("Error retrieving stats:", error);

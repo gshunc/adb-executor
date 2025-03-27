@@ -3,6 +3,9 @@ body {
   margin: 0;
   padding: 20px;
   font-size: 16px;
+  background: black;
+  color: white;
+  height: 100vh;
 }
 
 h1 {
@@ -29,11 +32,14 @@ h3 {
 .control-panel {
   flex: 1;
   max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .device-view {
   flex: 0 1 400px;
-  min-height: 800px;
+  min-height: 500px;
 }
 
 .reasoning-view {
@@ -41,7 +47,7 @@ h3 {
   min-width: 300px;
   max-width: 600px;
   padding: 20px;
-  background: #f5f5f5;
+  background: dimgray;
   border-radius: 8px;
   height: 70vh;
 }
@@ -63,9 +69,8 @@ h3 {
 
 .command-buttons {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
+  flex-direction: row;
+  gap: 5px;
 }
 
 .command-buttons button {
@@ -83,11 +88,12 @@ h3 {
 
 .coordinate-input,
 .text-input {
-  background: #f8f9fa;
+  background: dimgray;
   padding: 15px;
   border-radius: 4px;
   width: auto;
   margin: 0;
+  text-align: center;
 }
 
 .input-group {
@@ -119,6 +125,11 @@ h3 {
   resize: vertical;
   font-family: inherit;
   font-size: 1.1rem;
+  background: dimgray;
+}
+
+.prompt-input::placeholder {
+  color: white;
 }
 
 .text-input-group input {
@@ -144,19 +155,19 @@ button:hover {
 }
 
 #status-indicator {
-  background: white;
-  border: 5px solid gray;
+  background: dimgray;
+  border: 5px solid dimgray;
 }
 
 #device-starter {
   background: maroon;
 }
 #device-stopper {
-  background: gray;
+  background: dimgray;
 }
 
 .screenshot-container {
-  background: #f8f9fa;
+  background: dimgray;
   padding: 10px;
   border-radius: 4px;
   text-align: center;
@@ -173,7 +184,7 @@ button:hover {
 }
 
 .output-container {
-  background: #f8f9fa;
+  background: dimgray;
   padding: 20px;
   border-radius: 4px;
   margin-top: 20px;
@@ -199,7 +210,7 @@ pre {
   display: flex;
   flex-direction: row;
   gap: 10px;
-  border: 3px solid gray;
+  border: 3px solid dimgray;
   padding: 5px;
   border-radius: 4px;
 }

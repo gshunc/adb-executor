@@ -3,37 +3,75 @@
   <head>
     <title>2048 Agent</title>
     <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
   </head>
   <body>
     <div class="container">
-      <h1>2048 Agent</h1>
+      <h2 style="text-align: center">Automated 2048</h2>
 
       <div class="main-interface">
+        <div class="device-view">
+          <div class="screenshot-container">
+            <img id="device-screen" style="display: none" />
+          </div>
+        </div>
         <div class="control-panel">
-          <div class="command-buttons">
-            <button onclick="eventLoop()" id="device-starter">
-              Play Continiously
-            </button>
-            <button onclick="stopScreenshotLoop()" id="device-stopper" disabled>
-              Stop Continious Play
-            </button>
-            <button onclick="screenshotAndMove()" id="one-step">
-              Play One Step
-            </button>
-
-            <div class="device-controls">
-              <!-- <button onclick="goHome()">Return to Home</button> -->
-              <button onclick="swipeUp()">Swipe Up</button>
-              <button onclick="swipeDown()">Swipe Down</button>
-              <button onclick="swipeRight()">Swipe Right</button>
-              <button onclick="swipeLeft()">Swipe Left</button>
+          <div class="input-controls">
+            <h4
+              style="
+                background-color: dimgray;
+                border-radius: 4px;
+                padding: 12px;
+                margin: 0;
+                text-align: center;
+              "
+            >
+              How should I play this game?
+            </h4>
+            <div class="text-input">
+              <h3 style="margin-top: 0">What are the rules?</h3>
+              <div class="text-input-group">
+                <textarea
+                  id="rules-input"
+                  class="prompt-input"
+                  placeholder="Enter game rules here..."
+                ></textarea>
+              </div>
             </div>
-            <button onclick="clearPhotos()" id="clear-photos">
-              Clear Photos
-            </button>
+            <div class="text-input">
+              <h3 style="margin-top: 0">What is your strategy?</h3>
+              <div class="text-input-group">
+                <textarea
+                  id="prompt-input"
+                  class="prompt-input"
+                  placeholder="Enter prompt here..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
             <button onclick="pollDevice()" id="status-indicator">
               Device Status
             </button>
+            <div class="command-buttons">
+              <button onclick="eventLoop()" id="device-starter">
+                <i class="fas fa-play"></i>
+              </button>
+              <button
+                onclick="stopScreenshotLoop()"
+                id="device-stopper"
+                disabled
+              >
+                <i class="fas fa-pause"></i>
+              </button>
+              <button onclick="screenshotAndMove()" id="one-step">
+                <i class="fas fa-right-to-bracket"></i>
+              </button>
+            </div>
           </div>
 
           <!-- <div class="input-controls">
@@ -49,26 +87,8 @@
               </div>
             </div>
           </div> -->
-
-          <div class="input-controls">
-            <div class="text-input">
-              <h3>How would you like to play?</h3>
-              <div class="text-input-group">
-                <textarea
-                  id="prompt-input"
-                  class="prompt-input"
-                  placeholder="Enter prompt here..."
-                ></textarea>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div class="device-view">
-          <div class="screenshot-container">
-            <img id="device-screen" style="display: none" />
-          </div>
-        </div>
         <div class="reasoning-view">
           <h3>LLM Reasoning Output</h3>
           <pre id="llm-output">No output yet...</pre>
