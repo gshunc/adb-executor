@@ -44,9 +44,9 @@ async function captureScreenshot() {
     screenshotImg.src = URL.createObjectURL(imageBlob);
     screenshotImg.style.display = "block";
 
-    document.getElementById(
-      "clear-photos"
-    ).textContent = `Clear Photos: ${screenshotCount} photo(s)`;
+    // document.getElementById(
+    //   "clear-photos"
+    // ).textContent = `Clear Photos: ${screenshotCount} photo(s)`;
   } catch (error) {
     console.error("Error taking screenshot:", error);
     document.getElementById(
@@ -277,8 +277,8 @@ async function clearPhotos() {
  */
 async function eventLoop() {
   isScreenshotLoopRunning = true;
-  document.getElementById("clear-photos").disabled = true;
-  document.getElementById("clear-photos").style.background = "dimgray";
+  // document.getElementById("clear-photos").disabled = true;
+  // document.getElementById("clear-photos").style.background = "dimgray";
   document.getElementById("device-starter").style.background = "green";
   document.getElementById("device-stopper").style.background = "#007bff";
   document.getElementById("device-stopper").disabled = false;

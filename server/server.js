@@ -8,7 +8,6 @@ const util = require("util");
 const sharp = require("sharp");
 const GameAnalyzer = require("./services/gameAnalyzer");
 const app = express();
-const adbPath = process.env.ADB_PATH;
 const execFileAsync = util.promisify(execFile);
 const OpenAI = require("openai");
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -17,6 +16,12 @@ const openai = new OpenAI({
   apiKey: openaiApiKey,
   organization: openaiOrganization,
 });
+
+// Helper function to get the correct ADB path based on platform
+const getAdbPath = () => {
+  if (process.env.ADB_PATH) return process.env.ADB_PATH;
+  return path.join('.', 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb');
+};
 
 const gameAnalyzer = new GameAnalyzer(openai);
 
@@ -35,7 +40,7 @@ app.listen(3000, () => {
 app.post("/api/adb", async (req, res) => {
   try {
     const { command, args = [] } = req.body;
-    const { stdout } = await execFileAsync("./platform-tools/adb", [
+    const { stdout } = await execFileAsync(getAdbPath(), [
       command,
       ...args,
     ]);
@@ -49,7 +54,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     // Get screenshot data directly
     const { stdout } = await execFileAsync(
-      "./platform-tools/adb",
+      getAdbPath(),
       ["exec-out", "screencap -p"],
       { maxBuffer: 25 * 1024 * 1024, encoding: "buffer" }
     );
@@ -75,12 +80,13 @@ app.post("/api/analyze", async (req, res) => {
 app.post("/api/screenshot/capture", async (req, res) => {
   try {
     // Get count first since we need it for comparison
-    const files = await fs.readdir("./server/public/screencaps");
+    const screencapsDir = path.join(__dirname, "public", "screencaps");
+    const files = await fs.readdir(screencapsDir);
     const currentCount = files.length;
 
     // Use exec-out to get PNG data directly
     const { stdout } = await execFileAsync(
-      "./platform-tools/adb",
+      getAdbPath(),
       ["exec-out", "screencap -p"],
       { maxBuffer: 25 * 1024 * 1024, encoding: "buffer" }
     );
@@ -90,7 +96,7 @@ app.post("/api/screenshot/capture", async (req, res) => {
     // Save file asynchronously
     const filename = `screenshot${currentCount}.png`;
     fs.writeFile(
-      path.join("./server/public/screencaps", filename),
+      path.join(screencapsDir, filename),
       screenshotBuffer
     ).catch(console.error);
 
@@ -115,7 +121,7 @@ app.post("/api/tap", async (req, res) => {
         .json({ error: "X and Y coordinates are required" });
     }
 
-    const { stdout } = await execFileAsync(adbPath, [
+    const { stdout } = await execFileAsync(getAdbPath(), [
       "shell",
       "input",
       "tap",
@@ -143,7 +149,7 @@ app.get("/api/screencaps/:imageName", async (req, res) => {
 
 app.get("/api/dimensions", async (req, res) => {
   try {
-    const { stdout } = await execFileAsync("./platform-tools/adb", [
+    const { stdout } = await execFileAsync(getAdbPath(), [
       "shell",
       "wm",
       "size",
