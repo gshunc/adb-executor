@@ -278,7 +278,7 @@ async function clearPhotos() {
 async function eventLoop() {
   isScreenshotLoopRunning = true;
   document.getElementById("clear-photos").disabled = true;
-  document.getElementById("clear-photos").style.background = "gray";
+  document.getElementById("clear-photos").style.background = "dimgray";
   document.getElementById("device-starter").style.background = "green";
   document.getElementById("device-stopper").style.background = "#007bff";
   document.getElementById("device-stopper").disabled = false;
@@ -326,7 +326,7 @@ function stopScreenshotLoop() {
   document.getElementById("device-starter").style.background = "maroon";
   document.getElementById("clear-photos").disabled = false;
   document.getElementById("clear-photos").style.background = "#007bff";
-  document.getElementById("device-stopper").style.background = "gray";
+  document.getElementById("device-stopper").style.background = "dimgray";
   document.getElementById("device-stopper").disabled = true;
 }
 

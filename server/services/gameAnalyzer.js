@@ -31,11 +31,11 @@ class GameAnalyzer {
    */
   async analyzeGameState(userPrompt, screenshotBuffer) {
     this.moveCounter++;
-    if (this.moveCounter % 30 === 0) {
-      userPrompt == ""
-        ? await analyzeResponses(true)
-        : await analyzeResponses(false);
-    }
+    // if (this.moveCounter % 30 === 0) {
+    //   userPrompt == ""
+    //     ? await analyzeResponses(true)
+    //     : await analyzeResponses(false);
+    // }
 
     try {
       // Process the screenshot and check if it changed
