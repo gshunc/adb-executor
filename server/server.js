@@ -9,21 +9,34 @@ const sharp = require("sharp");
 const GameAnalyzer = require("./services/gameAnalyzer");
 const app = express();
 const execFileAsync = util.promisify(execFile);
-const OpenAI = require("openai");
-const openaiApiKey = process.env.OPENAI_API_KEY;
-const openaiOrganization = process.env.OPENAI_ORGANIZATION;
-const openai = new OpenAI({
-  apiKey: openaiApiKey,
-  organization: openaiOrganization,
-});
+const model_provider = process.env.MODEL_PROVIDER;
+let provider;
+if (model_provider == "openai") {
+  const OpenAI = require("openai");
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  const openaiOrganization = process.env.OPENAI_ORGANIZATION;
+  provider = new OpenAI({
+    apiKey: openaiApiKey,
+    organization: openaiOrganization,
+  });
+} else {
+  const { GoogleGenAI } = require("@google/genai");
+  provider = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+  });
+}
 
 // Helper function to get the correct ADB path based on platform
 const getAdbPath = () => {
   if (process.env.ADB_PATH) return process.env.ADB_PATH;
-  return path.join('.', 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb');
+  return path.join(
+    ".",
+    "platform-tools",
+    process.platform === "win32" ? "adb.exe" : "adb"
+  );
 };
 
-const gameAnalyzer = new GameAnalyzer(openai);
+const gameAnalyzer = new GameAnalyzer(provider);
 
 app.use(cors());
 app.use(express.json());
@@ -40,10 +53,7 @@ app.listen(3000, () => {
 app.post("/api/adb", async (req, res) => {
   try {
     const { command, args = [] } = req.body;
-    const { stdout } = await execFileAsync(getAdbPath(), [
-      command,
-      ...args,
-    ]);
+    const { stdout } = await execFileAsync(getAdbPath(), [command, ...args]);
     res.json({ result: stdout });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -95,10 +105,9 @@ app.post("/api/screenshot/capture", async (req, res) => {
 
     // Save file asynchronously
     const filename = `screenshot${currentCount}.png`;
-    fs.writeFile(
-      path.join(screencapsDir, filename),
-      screenshotBuffer
-    ).catch(console.error);
+    fs.writeFile(path.join(screencapsDir, filename), screenshotBuffer).catch(
+      console.error
+    );
 
     res.set({
       "Content-Type": "image/png",

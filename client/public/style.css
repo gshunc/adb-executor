@@ -94,6 +94,7 @@ h3 {
   width: auto;
   margin: 0;
   text-align: center;
+  color: white;
 }
 
 .input-group {
@@ -126,6 +127,7 @@ h3 {
   font-family: inherit;
   font-size: 1.1rem;
   background: dimgray;
+  color: white;
 }
 
 .prompt-input::placeholder {
