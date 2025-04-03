@@ -77,6 +77,7 @@ app.post("/api/analyze", async (req, res) => {
     // Use the game analyzer to analyze the game state
     const analysisJson = await gameAnalyzer.analyzeGameState(
       req.body.userPrompt,
+      req.body.rules,
       screenshotBuffer
     );
 

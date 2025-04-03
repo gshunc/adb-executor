@@ -43,10 +43,6 @@ async function captureScreenshot() {
     const screenshotImg = document.getElementById("device-screen");
     screenshotImg.src = URL.createObjectURL(imageBlob);
     screenshotImg.style.display = "block";
-
-    // document.getElementById(
-    //   "clear-photos"
-    // ).textContent = `Clear Photos: ${screenshotCount} photo(s)`;
   } catch (error) {
     console.error("Error taking screenshot:", error);
     document.getElementById(
@@ -62,16 +58,18 @@ async function captureScreenshot() {
  */
 async function screenshotAndMove(command, args = []) {
   const promptInput = document.getElementById("prompt-input");
+  const rulesInput = document.getElementById("rules-input");
   const reasoningOutput = document.getElementById("llm-output");
 
   try {
     const userPrompt = promptInput.value;
+    const rules = rulesInput.value;
     const response = await fetch("/api/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ command, args, userPrompt }),
+      body: JSON.stringify({ command, args, userPrompt, rules }),
     });
 
     if (!response.ok) {
@@ -81,7 +79,6 @@ async function screenshotAndMove(command, args = []) {
 
     const model_response = await response.json();
 
-    // Log the model output direction to a file on the server
     await fetch("/api/log-direction", {
       method: "POST",
       headers: {

@@ -43,7 +43,7 @@ class GameAnalyzer {
    * @param {Buffer} screenshotBuffer - The screenshot buffer of the current game state
    * @returns {Object} The analysis result with direction and reasoning
    */
-  async analyzeGameState(userPrompt, screenshotBuffer) {
+  async analyzeGameState(userPrompt, rulesInput, screenshotBuffer) {
     this.moveCounter++;
     // if (this.moveCounter % 30 === 0) {
     //   userPrompt == ""
@@ -61,6 +61,7 @@ class GameAnalyzer {
         messages = [
           this.systemPrompt,
           this.createUserPrompt(userPrompt, screenshotBuffer),
+          { role: "user", content: rulesInput },
         ];
       } else {
         messages = [this.createUserPrompt(userPrompt, screenshotBuffer)];
@@ -118,12 +119,14 @@ class GameAnalyzer {
           parts: [createPartFromText(this.analysisPrompt)],
           role: "user",
         });
+        messages.push({
+          parts: [createPartFromText(rulesInput)],
+          role: "user",
+        });
         const response = await this.modelProvider.models.generateContent({
           model: process.env.GEMINI_MODEL,
           contents: messages,
         });
-
-        console.log(response.text);
 
         messages.push({
           parts: [createPartFromText(response.text)],
@@ -155,8 +158,6 @@ class GameAnalyzer {
             response2.text.indexOf("}") + 1
           )
         );
-
-        console.log(result);
       }
 
       // Store the last move
