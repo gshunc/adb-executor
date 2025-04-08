@@ -22,104 +22,6 @@ async function executeCommand(command, args = []) {
 }
 
 /**
- * Takes a screenshot using the simplified capture endpoint.
- * @returns {Promise<void>}
- */
-async function captureScreenshot() {
-  try {
-    const response = await fetch("/api/screenshot/capture", {
-      method: "POST",
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const imageBlob = await response.blob();
-    const screenshotCount = response.headers.get("X-Screenshot-Count");
-    const screenshotFilename = response.headers.get("X-Screenshot-Filename");
-
-    // Update the screenshot display
-    const screenshotImg = document.getElementById("device-screen");
-    screenshotImg.src = URL.createObjectURL(imageBlob);
-    screenshotImg.style.display = "block";
-  } catch (error) {
-    console.error("Error taking screenshot:", error);
-    document.getElementById(
-      "status"
-    ).textContent = `Error taking screenshot: ${error.message}`;
-  }
-}
-
-/**
- * Takes a screenshot and updates the UI with the result.
- * @param {string} command - The command to execute.
- * @param {Array} args - Optional arguments for the command.
- */
-async function screenshotAndMove(command, args = []) {
-  const promptInput = document.getElementById("prompt-input");
-  const rulesInput = document.getElementById("rules-input");
-  const reasoningOutput = document.getElementById("llm-output");
-
-  try {
-    const userPrompt = promptInput.value;
-    const rules = rulesInput.value;
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ command, args, userPrompt, rules }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Screenshot failed");
-    }
-
-    const model_response = await response.json();
-
-    await fetch("/api/log-direction", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        direction: model_response.direction,
-        reasoning: model_response.reasoning,
-        timestamp: new Date().toISOString(),
-        userPrompt: userPrompt,
-      }),
-    });
-
-    switch (model_response.direction) {
-      case "DOWN":
-        await swipeDown();
-        break;
-      case "UP":
-        await swipeUp();
-        break;
-      case "RIGHT":
-        await swipeRight();
-        break;
-      case "LEFT":
-        await swipeLeft();
-        break;
-    }
-
-    if (reasoningOutput.textContent == "No output yet...") {
-      reasoningOutput.textContent = "";
-    }
-    reasoningOutput.textContent += model_response.reasoning + "\n\n";
-
-    // Auto-scroll to the bottom of the reasoning output
-    reasoningOutput.scrollTop = reasoningOutput.scrollHeight;
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-/**
  * Sends text input to the device.
  */
 async function typeText() {
@@ -274,8 +176,7 @@ async function clearPhotos() {
  */
 async function eventLoop() {
   isScreenshotLoopRunning = true;
-  // document.getElementById("clear-photos").disabled = true;
-  // document.getElementById("clear-photos").style.background = "dimgray";
+  modelReasoningHistory = [];
   document.getElementById("device-starter").style.background = "green";
   document.getElementById("device-stopper").style.background = "#007bff";
   document.getElementById("device-stopper").disabled = false;
@@ -312,6 +213,108 @@ async function eventLoop() {
   while (isScreenshotLoopRunning) {
     await screenshotAndMove();
     await captureScreenshot();
+  }
+}
+
+/**
+ * Takes a screenshot using the simplified capture endpoint.
+ * @returns {Promise<void>}
+ */
+async function captureScreenshot() {
+  try {
+    const response = await fetch("/api/screenshot/capture", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const imageBlob = await response.blob();
+
+    // Update the screenshot display
+    const screenshotImg = document.getElementById("device-screen");
+    screenshotImg.src = URL.createObjectURL(imageBlob);
+    screenshotImg.style.display = "block";
+  } catch (error) {
+    console.error("Error taking screenshot:", error);
+    document.getElementById(
+      "status"
+    ).textContent = `Error taking screenshot: ${error.message}`;
+  }
+}
+
+let modelReasoningHistory = [];
+
+/**
+ * Takes a screenshot and updates the UI with the result.
+ * @param {string} command - The command to execute.
+ * @param {Array} args - Optional arguments for the command.
+ */
+async function screenshotAndMove(command, args = []) {
+  const promptInput = document.getElementById("prompt-input");
+  const rulesInput = document.getElementById("rules-input");
+  const reasoningOutput = document.getElementById("llm-output");
+
+  try {
+    const userPrompt = promptInput.value;
+    const rules = rulesInput.value;
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ command, args, userPrompt, rules }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Screenshot failed");
+    }
+
+    const model_response = await response.json();
+
+    await fetch("/api/log-direction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        direction: model_response.direction,
+        reasoning: model_response.reasoning,
+        timestamp: new Date().toISOString(),
+        userPrompt: userPrompt,
+      }),
+    });
+
+    switch (model_response.direction) {
+      case "DOWN":
+        await swipeDown();
+        break;
+      case "UP":
+        await swipeUp();
+        break;
+      case "RIGHT":
+        await swipeRight();
+        break;
+      case "LEFT":
+        await swipeLeft();
+        break;
+    }
+
+    if (reasoningOutput.textContent == "No output yet...") {
+      reasoningOutput.textContent = "";
+    }
+
+    modelReasoningHistory.push(model_response.reasoning);
+
+    // Auto-scroll to the bottom of the reasoning output
+    reasoningOutput.textContent = modelReasoningHistory.join("\n\n");
+    nextStep();
+
+    reasoningOutput.scrollTop = reasoningOutput.scrollHeight;
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -373,6 +376,34 @@ async function pollingLoop() {
       isRunning = false;
     }
   }
+}
+
+let currentStep = 0;
+
+function nextStep() {
+  if (currentStep < modelReasoningHistory.length - 1) {
+    currentStep++;
+  }
+
+  updateReasoningOutput(currentStep);
+}
+
+function previousStep() {
+  if (currentStep > 0) {
+    currentStep--;
+  }
+  updateReasoningOutput(currentStep);
+}
+
+function updateReasoningOutput(step = currentStep) {
+  const reasoningOutput = document.getElementById("llm-output");
+  reasoningOutput.textContent = modelReasoningHistory
+    .slice(0, step + 1)
+    .join("\n");
+  reasoningOutput.scrollTop = reasoningOutput.scrollHeight;
+  document.getElementById("step-number").textContent = `${step + 1}/${
+    modelReasoningHistory.length
+  }`;
 }
 
 pollingLoop().catch((error) => {

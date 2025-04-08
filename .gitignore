@@ -1,5 +1,5 @@
 node_modules
-server/public/screencaps
+server/public/screencaps/*
 .env
 platform-tools
 server/logs

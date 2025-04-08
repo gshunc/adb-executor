@@ -28,9 +28,8 @@ if (model_provider == "openai") {
 
 // Helper function to get the correct ADB path based on platform
 const getAdbPath = () => {
-  if (process.env.ADB_PATH) return process.env.ADB_PATH;
   return path.join(
-    ".",
+    __dirname,
     "platform-tools",
     process.platform === "win32" ? "adb.exe" : "adb"
   );

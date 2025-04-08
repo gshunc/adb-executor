@@ -73,25 +73,34 @@
               </button>
             </div>
           </div>
-
-          <!-- <div class="input-controls">
-            <div class="text-input">
-              <h3>Enter Text into Device</h3>
-              <div class="text-input-group">
-                <input
-                  type="text"
-                  id="input-text"
-                  placeholder="Enter text here..."
-                />
-                <button onclick="typeText()">Enter</button>
-              </div>
-            </div>
-          </div> -->
         </div>
 
-        <div class="reasoning-view">
-          <h3>LLM Reasoning Output</h3>
-          <pre id="llm-output">No output yet...</pre>
+        <div
+          style="
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+          "
+        >
+          <div class="reasoning-view">
+            <h3>LLM Reasoning Output</h3>
+            <pre id="llm-output">No output yet...</pre>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <button style="width: 100px" onclick="previousStep()">
+              Previous
+            </button>
+            <button
+              style="width: 125px; display: flex; gap: 8px; flex-direction: row"
+              disabled
+            >
+              <div style="width: 50px">Step:</div>
+              <div style="width: 50px" id="step-number">0/0</div>
+            </button>
+            <button style="width: 100px" onclick="nextStep()">Next</button>
+          </div>
         </div>
       </div>
     </div>
