@@ -82,6 +82,7 @@
             flex-direction: column;
             gap: 8px;
             align-items: center;
+            max-width: 600px;
           "
         >
           <div class="reasoning-view">
@@ -100,6 +101,23 @@
               <div style="width: 50px" id="step-number">0/0</div>
             </button>
             <button style="width: 100px" onclick="nextStep()">Next</button>
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              max-width: 340px;
+            "
+          >
+            <div class="info-output">
+              <div>Last Game Score</div>
+              <div id="game-score">0</div>
+            </div>
+            <div class="info-output">
+              <div>Adherance Score</div>
+              <div id="adherance-score">0</div>
+            </div>
           </div>
         </div>
       </div>

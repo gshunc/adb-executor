@@ -177,7 +177,7 @@ async function clearPhotos() {
 async function eventLoop() {
   isScreenshotLoopRunning = true;
   modelReasoningHistory = [];
-  document.getElementById("device-starter").style.background = "green";
+  document.getElementById("device-starter").style.background = "lime";
   document.getElementById("device-stopper").style.background = "#007bff";
   document.getElementById("device-stopper").disabled = false;
 
@@ -245,6 +245,8 @@ async function captureScreenshot() {
 }
 
 let modelReasoningHistory = [];
+let scoreHistory = [];
+let adheranceHistory = [];
 
 /**
  * Takes a screenshot and updates the UI with the result.
@@ -307,6 +309,11 @@ async function screenshotAndMove(command, args = []) {
     }
 
     modelReasoningHistory.push(model_response.reasoning);
+    scoreHistory.push(model_response.gameScore);
+    adheranceHistory.push(Math.round(model_response.adherence * 100));
+
+    document.getElementById("game-score").textContent =
+      model_response.gameScore;
 
     // Auto-scroll to the bottom of the reasoning output
     reasoningOutput.textContent = modelReasoningHistory.join("\n\n");
@@ -362,8 +369,8 @@ async function pollingLoop() {
       const statusIndicator = document.getElementById("status-indicator");
 
       if (deviceOnline) {
-        statusIndicator.style.border = "5px solid green";
-        statusIndicator.style.color = "green";
+        statusIndicator.style.border = "5px solid lime";
+        statusIndicator.style.color = "lime";
         statusIndicator.textContent = "Device Status: Connected";
       } else {
         statusIndicator.style.border = "5px dashed red";
@@ -404,6 +411,9 @@ function updateReasoningOutput(step = currentStep) {
   document.getElementById("step-number").textContent = `${step + 1}/${
     modelReasoningHistory.length
   }`;
+  document.getElementById("adherance-score").textContent =
+    adheranceHistory[step];
+  document.getElementById("game-score").textContent = scoreHistory[step];
 }
 
 pollingLoop().catch((error) => {
