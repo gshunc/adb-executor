@@ -3,7 +3,6 @@ server/public/screencaps/*
 .env
 platform-tools
 server/logs
-server/public/centroid.jsonl
 server/public/embeddings_fixed.jsonl
 server/public/embeddings.jsonl
 
