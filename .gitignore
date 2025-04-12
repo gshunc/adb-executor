@@ -7,3 +7,4 @@ server/public/embeddings_fixed.jsonl
 server/public/embeddings.jsonl
 
 .DS_Store
+ocr_server/__pycache__

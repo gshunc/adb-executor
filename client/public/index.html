@@ -38,7 +38,10 @@
                   id="rules-input"
                   class="prompt-input"
                   placeholder="Enter game rules here..."
-                ></textarea>
+                  style="height: 100px"
+                >
+When two tiles with the same number touch, they merge into one! Try to reach the 2048 tile. The game ends when the board is full and no more merges are possible.</textarea
+                >
               </div>
             </div>
             <div class="text-input">
@@ -48,7 +51,10 @@
                   id="prompt-input"
                   class="prompt-input"
                   placeholder="Enter prompt here..."
-                ></textarea>
+                  style="height: 100px"
+                >
+Keep the highest value tile in the top left corner. Build a chain of decreasing tiles next to it along the top row. Avoid moving tiles downwards unnecessarily. Fill rows from the top down or side to side towards the corner.</textarea
+                >
               </div>
             </div>
           </div>
@@ -91,7 +97,7 @@
           </div>
           <div style="display: flex; gap: 8px; align-items: center">
             <button style="width: 100px" onclick="previousStep()">
-              Previous
+              < Back
             </button>
             <button
               style="width: 125px; display: flex; gap: 8px; flex-direction: row"
@@ -100,7 +106,7 @@
               <div style="width: 50px">Step:</div>
               <div style="width: 50px" id="step-number">0/0</div>
             </button>
-            <button style="width: 100px" onclick="nextStep()">Next</button>
+            <button style="width: 100px" onclick="nextStep()">Next ></button>
           </div>
           <div
             style="

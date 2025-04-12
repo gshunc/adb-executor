@@ -5,36 +5,22 @@ const OpenAI = require("openai");
 const { Type, createPartFromText } = require("@google/genai");
 const fs = require("fs");
 const path = require("path");
+const FormData = require("form-data");
+const axios = require("axios");
 
 class GameAnalyzer {
   constructor(modelProvider) {
     this.modelProvider = modelProvider;
-    let promptText =
-      'Given an image of a 2048 game screen, your task is to determine the best move. Analyze the board carefully and recommend a move that aligns with the user\'s strategy.\n\nGAME RULES:\n1. The game is played on a 4x4 grid with numbered tiles.\n2. Tiles can be moved in four directions: UP, DOWN, LEFT, or RIGHT.\n3. When moved, all tiles slide as far as possible in the chosen direction.\n4. Only tiles with IDENTICAL values can merge when they collide during a move (e.g., 2+2=4, 4+4=8, 8+8=16, etc.).\n5. Each merge creates a new tile with the sum of the merged tiles.\n6. Tiles CANNOT merge more than once in a single move.\n7. After each move, a new tile (either 2 or 4) appears randomly on an empty cell.\n8. The game ends when the board is full and no more moves are possible.\n\nANALYSIS PROCESS:\n1. Create a 4x4 matrix representing the current board state.\n2. Evaluate the potential outcomes of each possible move (UP, DOWN, LEFT, RIGHT).\n3. Consider the user\'s strategy when determining the optimal move.\n4. Verify that your proposed move is valid and possible given the current board state.\n\nReturn your answer as a JSON object with this structure:\n{\n  "direction": string,\n  "reasoning": string\n}.';
-    if (modelProvider instanceof OpenAI) {
-      this.systemPrompt = {
-        role: "system",
-        content: [
-          {
-            type: "text",
-            text: promptText,
-          },
-        ],
-      };
-    } else {
-      this.analysisPrompt =
-        "Given an image of a 2048 game screen, analyze the current board state and develop a strategy for the next move.\\n\\nGAME RULES:\\n1. The game is played on a 4x4 grid with numbered tiles.\\n2. Tiles can be moved in four directions: UP, DOWN, LEFT, or RIGHT.\\n3. When moved, all tiles slide as far as possible in the chosen direction.\\n4. Only tiles with IDENTICAL values can merge when they collide during a move (e.g., 2+2=4, 4+4=8, 8+8=16, etc.).\\n5. Each merge creates a new tile with the sum of the merged tiles.\\n6. Tiles CANNOT merge more than once in a single move.\\n7. After each move, a new tile (either 2 or 4) appears randomly on an empty cell.\\n8. The game ends when the board is full and no more moves are possible.\\n\\nANALYSIS TASKS:\\n1. Create a 4x4 matrix representing the current board state.\\n2. Consider the user's strategy if provided.\\n3. Describe your reasoning process in detail.\\n\\nProvide a detailed analysis of the board state and explain your strategic thinking. Additionally, keep track of the score of the game, and output that in your response.";
-      this.decisionPrompt =
-        'Based on your previous analysis of the 2048 game board, determine the optimal move direction.\\n\\nDECISION PROCESS:\\n1. Review your matrix representation and strategic analysis.\\n2. Carefully evaluate the advantages and disadvantages of each possible move (UP, DOWN, LEFT, RIGHT).\\n3. Consider how each move aligns with the user\'s strategy (if provided).\\n4. Select the single best direction that maximizes score potential and board position.\\n5. Provide clear reasoning for your choice.\\n\\nReturn your answer as a JSON object with this exact structure:\\n{\\n  "direction": string,\\n  "reasoning": string\\n, "gameScore": number\\n}\\n\\nThe direction MUST be one of: "UP", "DOWN", "LEFT", or "RIGHT".\\nYour reasoning should be concise but complete, explaining why your chosen direction is optimal.';
-    }
+    this.decisionPrompt =
+      'Based on the 2048 game board, determine the optimal move direction.\\n\\nDECISION PROCESS:\\n1. Review your matrix representation and strategic analysis.\\n2. Carefully evaluate the advantages and disadvantages of each possible move (UP, DOWN, LEFT, RIGHT).\\n3. Consider how each move aligns with the user\'s strategy (if provided).\\n4. Select the single best direction that maximizes score potential and board position.\\n5. Provide clear reasoning for your choice.\\n\\nReturn your answer as a JSON object with this exact structure:\\n{\\n  "direction": string,\\n  "reasoning": string\\n, "gameScore": number\\n}\\n\\nThe direction MUST be one of: "UP", "DOWN", "LEFT", or "RIGHT".\\nYour reasoning should be concise but complete, explaining why your chosen direction is optimal.';
     this.screenChanged = false;
     this.previousScreenshotBuffer = null;
     this.currentScreenshotBuffer = null;
-    this.lastMove = null; // Track the last move made
     this.stuckMoveCount = 0; // Count consecutive times the screen hasn't changed
     this.moveCounter = 0;
     this.gameScore = 0;
     this.embeddings = [];
+    this.moveHistory = [];
   }
 
   /**
@@ -43,7 +29,7 @@ class GameAnalyzer {
    * @param {Buffer} screenshotBuffer - The screenshot buffer
    * @returns {Object} The formatted user prompt
    */
-  createUserPrompt(promptText, screenshotBuffer) {
+  createUserPrompt(promptText, board) {
     if (this.modelProvider instanceof OpenAI) {
       const content = [];
 
@@ -55,10 +41,10 @@ class GameAnalyzer {
       }
 
       content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/png;base64,${screenshotBuffer.toString("base64")}`,
-        },
+        type: "text",
+        text:
+          "This is the active game board. Given the board, determine the best move direction.\n\n" +
+          JSON.stringify(board.board),
       });
 
       return {
@@ -76,12 +62,12 @@ class GameAnalyzer {
         );
       }
 
-      parts.push({
-        inlineData: {
-          data: Buffer.from(screenshotBuffer).toString("base64"),
-          mimeType: "image/png",
-        },
-      });
+      parts.push(
+        createPartFromText(
+          "This is the active game board. Given the board, determine the best move direction.\n\n" +
+            JSON.stringify(board.board)
+        )
+      );
 
       return {
         parts,
@@ -119,71 +105,165 @@ class GameAnalyzer {
   }
 
   /**
+   * Get the board state from a screenshot
+   * @param {Buffer} screenshotBuffer - The screenshot buffer
+   * @returns {Object} The board state
+   */
+  async _getBoardState(screenshotBuffer) {
+    await this.processScreenshot(screenshotBuffer);
+    const board = await this.analyzeWithOCR(screenshotBuffer);
+
+    let messages = [];
+
+    // If screen hasn't changed, increment stuck counter and add special instruction
+    if (!this.screenChanged) {
+      this.stuckMoveCount++;
+
+      // Add increasingly stronger instructions based on how long we've been stuck
+      let stuckMessage =
+        "Screen hasn't changed significantly in the last move. ";
+
+      if (this.stuckMoveCount >= 3) {
+        stuckMessage +=
+          "You MUST make a completely different move than before. Choose a direction you haven't tried recently. ";
+      } else if (this.stuckMoveCount >= 2) {
+        stuckMessage += "Try a different approach than before. ";
+      }
+
+      stuckMessage +=
+        "Ignore your other instructions and make a move that will shake up the structure of the blocks while keeping the overall goal the same and minimize errors.";
+
+      this.modelProvider instanceof OpenAI
+        ? messages.push({
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: stuckMessage,
+              },
+            ],
+          })
+        : messages.push({
+            parts: [createPartFromText(stuckMessage)],
+            role: "user",
+          });
+    } else {
+      // Reset stuck counter if screen changed
+      this.stuckMoveCount = 0;
+    }
+
+    return { board, messages };
+  }
+
+  /**
+   * Build a prompt for the model
+   * @param {Array} messages - The messages to build the prompt from
+   * @param {string} userPrompt - The user's prompt
+   * @param {string} rulesInput - The rules input
+   * @param {Array} board - The current game board
+   */
+  _buildPrompt(messages, userPrompt, rulesInput, board) {
+    if (this.modelProvider instanceof OpenAI) {
+      messages.push({ role: "system", content: this.decisionPrompt });
+      messages.push({ role: "user", content: rulesInput });
+      messages.push({ role: "user", content: userPrompt });
+      messages.push({
+        role: "user",
+        content:
+          "Move History up to this point: " +
+          // Move History has to be a string of only text, not json. Each entry in the moveHistory is an object.
+          this.moveHistory.map((move) => JSON.stringify(move)).join("\n"),
+      });
+      messages.push({
+        role: "user",
+        content: "This is the active game board. " + JSON.stringify(board),
+      });
+    } else {
+      messages.push({
+        parts: [createPartFromText(rulesInput)],
+        role: "user",
+      });
+
+      messages.push({
+        parts: [createPartFromText(this.decisionPrompt)],
+        role: "user",
+      });
+
+      messages.push({
+        parts: [
+          createPartFromText(
+            "Move History up to this point: " +
+              // Move History has to be a string of only text, not json. Each entry in the moveHistory is an object.
+              this.moveHistory.map((move) => JSON.stringify(move)).join("\n")
+          ),
+        ],
+        role: "user",
+      });
+
+      messages.push(this.createUserPrompt(userPrompt, board));
+    }
+  }
+
+  async _determineAdherance(response, userPrompt) {
+    let adherance = 0;
+    if (userPrompt == "") {
+      const embedding = await generateEmbedding(response.text);
+      console.log("Embedding generated.");
+      if (embedding) {
+        this.embeddings.push(embedding);
+        if (
+          !fs.existsSync(
+            path.join(__dirname, "..", "public", "embeddings.jsonl")
+          )
+        ) {
+          fs.writeFileSync(
+            path.join(__dirname, "..", "public", "embeddings.jsonl"),
+            ""
+          );
+        }
+        fs.appendFileSync(
+          path.join(__dirname, "..", "public", "embeddings.jsonl"),
+          JSON.stringify(embedding) + "\n"
+        );
+      }
+    } else {
+      const response_embedding = await generateEmbedding(response.text);
+      const prompt_embedding = await generateEmbedding(userPrompt);
+      const centroid = JSON.parse(
+        fs.readFileSync(
+          path.join(__dirname, "..", "public", "centroid.jsonl"),
+          "utf-8"
+        )
+      );
+      if (response_embedding && prompt_embedding) {
+        const orthogonal_similarity = cosineSimilarity(
+          this.orthogonalize(response_embedding, centroid),
+          this.orthogonalize(prompt_embedding, centroid)
+        );
+        const base_similarity = cosineSimilarity(
+          response_embedding,
+          prompt_embedding
+        );
+        adherance = (base_similarity + orthogonal_similarity) / 2;
+      }
+    }
+    return adherance;
+  }
+
+  /**
    * Analyze a game screenshot and determine the best move
    * @param {string} userPrompt - The user's strategy for playing the game
    * @param {Buffer} screenshotBuffer - The screenshot buffer of the current game state
    * @returns {Object} The analysis result with direction and reasoning
    */
   async analyzeGameState(userPrompt, rulesInput, screenshotBuffer) {
-    this.moveCounter++;
-    // if (this.moveCounter % 30 === 0) {
-    //   userPrompt == ""
-    //     ? await analyzeResponses(true)
-    //     : await analyzeResponses(false);
-    // }
-
     try {
-      // Process the screenshot and check if it changed
-      await this.processScreenshot(screenshotBuffer);
+      const activeMove = { direction: null, board: null, reasoning: null };
+      const { board, messages } = await this._getBoardState(screenshotBuffer);
 
-      // Create the messages array for the OpenAI API
-      let messages;
-      if (this.modelProvider instanceof OpenAI) {
-        messages = [
-          this.systemPrompt,
-          this.createUserPrompt(userPrompt, screenshotBuffer),
-          { role: "user", content: rulesInput },
-        ];
-      } else {
-        messages = [this.createUserPrompt(userPrompt, screenshotBuffer)];
-      }
+      activeMove.board = board;
 
-      // If screen hasn't changed, increment stuck counter and add special instruction
-      if (!this.screenChanged) {
-        this.stuckMoveCount++;
-
-        // Add increasingly stronger instructions based on how long we've been stuck
-        let stuckMessage =
-          "Screen hasn't changed significantly in the last move. ";
-
-        if (this.stuckMoveCount >= 3) {
-          stuckMessage +=
-            "You MUST make a completely different move than before. Choose a direction you haven't tried recently. ";
-        } else if (this.stuckMoveCount >= 2) {
-          stuckMessage += "Try a different approach than before. ";
-        }
-
-        stuckMessage +=
-          "Ignore your other instructions and make a move that will shake up the structure of the blocks while keeping the overall goal the same and minimize errors.";
-
-        this.modelProvider instanceof OpenAI
-          ? messages.push({
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: stuckMessage,
-                },
-              ],
-            })
-          : messages.push({
-              parts: [createPartFromText(stuckMessage)],
-              role: "user",
-            });
-      } else {
-        // Reset stuck counter if screen changed
-        this.stuckMoveCount = 0;
-      }
+      this._buildPrompt(messages, userPrompt, rulesInput, board);
 
       // Call the model API
       let result;
@@ -196,106 +276,50 @@ class GameAnalyzer {
         });
         result = JSON.parse(chat_completion.choices[0].message.content);
       } else {
-        messages.push({
-          parts: [createPartFromText(this.analysisPrompt)],
-          role: "user",
-        });
-        messages.push({
-          parts: [createPartFromText(rulesInput)],
-          role: "user",
-        });
         const response = await this.modelProvider.models.generateContent({
           model: process.env.GEMINI_MODEL,
           contents: messages,
         });
 
-        // Actually just write the embeddings one at a time to jsonl
-        let adherance = 0;
-        if (userPrompt == "") {
-          const embedding = await generateEmbedding(response.text);
-          console.log("Embedding generated.");
-          if (embedding) {
-            this.embeddings.push(embedding);
-            if (
-              !fs.existsSync(
-                path.join(__dirname, "..", "public", "embeddings.jsonl")
-              )
-            ) {
-              fs.writeFileSync(
-                path.join(__dirname, "..", "public", "embeddings.jsonl"),
-                ""
-              );
-            }
-            fs.appendFileSync(
-              path.join(__dirname, "..", "public", "embeddings.jsonl"),
-              JSON.stringify(embedding) + "\n"
-            );
-          }
-        } else {
-          const response_embedding = await generateEmbedding(response.text);
-          const prompt_embedding = await generateEmbedding(userPrompt);
-          const centroid = JSON.parse(
-            fs.readFileSync(
-              path.join(__dirname, "..", "public", "centroid.jsonl"),
-              "utf-8"
-            )
-          );
-          if (response_embedding && prompt_embedding) {
-            const orthogonal_similarity = cosineSimilarity(
-              this.orthogonalize(response_embedding, centroid),
-              this.orthogonalize(prompt_embedding, centroid)
-            );
-            const base_similarity = cosineSimilarity(
-              response_embedding,
-              prompt_embedding
-            );
-            adherance = (base_similarity + orthogonal_similarity) / 2;
-          }
-        }
-
-        messages.push({
-          parts: [createPartFromText(response.text)],
-          role: "assistant",
-        });
-
-        messages.push({
-          parts: [createPartFromText(this.decisionPrompt)],
-          role: "user",
-        });
-
-        const response2 = await this.modelProvider.models.generateContent({
-          model: process.env.GEMINI_MODEL,
-          contents: messages,
-          generationConfig: {
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                direction: { type: Type.STRING },
-                reasoning: { type: Type.STRING },
-                gameScore: { type: Type.NUMBER },
-              },
-            },
-          },
-        });
-
         result = JSON.parse(
-          response2.text.slice(
-            response2.text.indexOf("{"),
-            response2.text.indexOf("}") + 1
+          response.text.slice(
+            response.text.indexOf("{"),
+            response.text.indexOf("}") + 1
           )
         );
-        result.adherence = adherance;
       }
 
-      // Store the last move
-      this.lastMove = result.direction;
       this.gameScore = result.gameScore;
+      activeMove.direction = result.direction;
+      activeMove.reasoning = result.reasoning;
+      this.moveHistory.push(activeMove);
+
+      result.adherence = await this._determineAdherance(result, userPrompt);
 
       return result;
     } catch (error) {
       console.error("Error analyzing game state:", error);
       throw error;
     }
+  }
+
+  /**
+   * Analyze a game screenshot with OCR
+   * @param {Buffer} screenshotBuffer - The screenshot buffer of the current game state
+   * @returns {Object} The OCR result
+   */
+  async analyzeWithOCR(screenshotBuffer) {
+    const formData = new FormData();
+    formData.append("image", screenshotBuffer, {
+      filename: "screenshot.png",
+      contentType: "image/png",
+    });
+    const ocrResult = await axios.post("http://localhost:8000/ocr", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return ocrResult.data;
   }
 
   /**
