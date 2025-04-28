@@ -39,6 +39,21 @@ async function typeText() {
 }
 
 /**
+ * Sets the model provider based on the selected option.
+ */
+async function setModel() {
+  const modelSelect = document.getElementById("model-select");
+  const model = modelSelect.value;
+  await fetch("/api/model", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model }),
+  });
+}
+
+/**
  * Handles screen tap events and sends tap coordinates to the device.
  * @param {Event} e - The click event.
  */
@@ -172,6 +187,24 @@ async function clearPhotos() {
 }
 
 /**
+ * Toggles the visibility of the output container.
+ */
+function toggleOutput() {
+  const outputContainer = document.getElementById("output-container");
+  if (outputContainer.style.display === "none") {
+    outputContainer.style.display = "flex";
+  } else {
+    outputContainer.style.display = "none";
+  }
+  const button = document.getElementById("toggle-output");
+  if (outputContainer.style.display === "none") {
+    button.textContent = "Show";
+  } else {
+    button.textContent = "Hide";
+  }
+}
+
+/**
  * Starts the screenshot loop.
  */
 async function eventLoop() {
@@ -255,18 +288,16 @@ let adheranceHistory = [];
  */
 async function screenshotAndMove(command, args = []) {
   const promptInput = document.getElementById("prompt-input");
-  const rulesInput = document.getElementById("rules-input");
   const reasoningOutput = document.getElementById("llm-output");
 
   try {
     const userPrompt = promptInput.value;
-    const rules = rulesInput.value;
     const response = await fetch("/api/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ command, args, userPrompt, rules }),
+      body: JSON.stringify({ command, args, userPrompt }),
     });
 
     if (!response.ok) {
@@ -331,8 +362,6 @@ async function screenshotAndMove(command, args = []) {
 function stopScreenshotLoop() {
   isScreenshotLoopRunning = false;
   document.getElementById("device-starter").style.background = "maroon";
-  document.getElementById("clear-photos").disabled = false;
-  document.getElementById("clear-photos").style.background = "#007bff";
   document.getElementById("device-stopper").style.background = "dimgray";
   document.getElementById("device-stopper").disabled = true;
 }

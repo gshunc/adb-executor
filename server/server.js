@@ -9,22 +9,19 @@ const sharp = require("sharp");
 const GameAnalyzer = require("./services/gameAnalyzer");
 const app = express();
 const execFileAsync = util.promisify(execFile);
-const model_provider = process.env.MODEL_PROVIDER;
-let provider;
-if (model_provider == "openai") {
-  const OpenAI = require("openai");
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-  const openaiOrganization = process.env.OPENAI_ORGANIZATION;
-  provider = new OpenAI({
-    apiKey: openaiApiKey,
-    organization: openaiOrganization,
-  });
-} else {
-  const { GoogleGenAI } = require("@google/genai");
-  provider = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  });
-}
+const OpenAI = require("openai");
+const { GoogleGenAI } = require("@google/genai");
+const { LocalStorage } = require("node-localstorage");
+const localStorage = new LocalStorage("./scratch");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORGANIZATION,
+});
+
+const gemini = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 // Helper function to get the correct ADB path based on platform
 const getAdbPath = () => {
@@ -35,7 +32,7 @@ const getAdbPath = () => {
   );
 };
 
-const gameAnalyzer = new GameAnalyzer(provider);
+const gameAnalyzer = new GameAnalyzer();
 
 app.use(cors());
 app.use(express.json());
@@ -76,7 +73,6 @@ app.post("/api/analyze", async (req, res) => {
     // Use the game analyzer to analyze the game state
     const analysisJson = await gameAnalyzer.analyzeGameState(
       req.body.userPrompt,
-      req.body.rules,
       screenshotBuffer
     );
 
@@ -195,11 +191,18 @@ app.delete("/api/screencaps", async (req, res) => {
   }
 });
 
-app.post("/api/model/provider", (req, res) => {
+app.post("/api/model/", (req, res) => {
   try {
-    const { provider } = req.body;
+    const { model } = req.body;
+    let provider;
+    if (model === "gpt-4o") {
+      provider = openai;
+    } else {
+      provider = gemini;
+    }
+    localStorage.setItem("model", model);
     gameAnalyzer.setModelProvider(provider);
-    res.json({ success: true, provider });
+    res.json({ success: true });
   } catch (error) {
     console.error("Error setting model provider:", error);
     res.status(500).json({ error: error.message });

@@ -3,6 +3,8 @@ body {
   font-size: 16px;
   background: black;
   color: white;
+  margin: 0;
+  padding: 0;
 }
 
 h1 {
@@ -28,7 +30,8 @@ h3 {
 
 .control-panel {
   flex: 1;
-  max-width: 400px;
+  max-width: 395px;
+  min-width: 395px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -37,12 +40,12 @@ h3 {
 .device-view {
   flex: 0 1 400px;
   min-height: 500px;
+  max-height: 500px;
 }
 
 .reasoning-view {
   flex: 1;
   min-width: 300px;
-  max-width: 600px;
   padding: 20px;
   background: dimgray;
   border-radius: 8px;
@@ -185,39 +188,31 @@ button:hover {
   padding: 10px;
   border-radius: 4px;
   text-align: center;
-  max-width: 400px;
+  max-width: 360px;
   min-height: 600px;
 }
 
 #device-screen {
-  max-width: 300px;
   height: auto;
   border: 1px solid #ddd;
   border-radius: 4px;
   justify-self: center;
+  max-width: 400px;
+  max-height: 600px;
 }
 
 .output-container {
-  background: dimgray;
-  padding: 20px;
-  border-radius: 4px;
-  margin-top: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
 }
 
 pre {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
-}
-
-@media (max-width: 768px) {
-  .main-interface {
-    flex-direction: column;
-  }
-
-  .control-panel {
-    max-width: none;
-  }
 }
 
 .device-controls {

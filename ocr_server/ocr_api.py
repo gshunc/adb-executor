@@ -141,7 +141,6 @@ async def ocr_endpoint(image: UploadFile = File(...)):
     """
     try:
         contents = await image.read()
-        print("Contents read:", contents)
         img_array = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
         board = load_and_crop_board_from_array(img_array)

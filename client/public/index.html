@@ -9,6 +9,21 @@
     />
   </head>
   <body>
+    <div class="header">
+      <h1
+        style="
+          text-align: center;
+          background-color: #222222;
+          width: 100vw;
+          padding: 10px;
+          margin: 0;
+          font-size: 1.75rem;
+        "
+      >
+        #18 Demo Abstract - Human Strategy Meets AI Execution: An LLM-Driven
+        Gaming Agent
+      </h1>
+    </div>
     <div class="container">
       <h2 style="text-align: center">Automated 2048</h2>
 
@@ -32,25 +47,12 @@
               How should I play this game?
             </h4>
             <div class="text-input">
-              <h3 style="margin-top: 0">What are the rules?</h3>
-              <div class="text-input-group">
-                <textarea
-                  id="rules-input"
-                  class="prompt-input"
-                  placeholder="Enter game rules here..."
-                  style="height: 100px"
-                >
-When two tiles with the same number touch, they merge into one! Try to reach the 2048 tile. The game ends when the board is full and no more merges are possible.</textarea
-                >
-              </div>
-            </div>
-            <div class="text-input">
               <h3 style="margin-top: 0">What is your strategy?</h3>
               <div class="text-input-group">
                 <textarea
                   id="prompt-input"
                   class="prompt-input"
-                  placeholder="Enter prompt here..."
+                  placeholder="Enter strategy here..."
                   style="height: 100px"
                 >
 Keep the highest value tile in the top left corner. Build a chain of decreasing tiles next to it along the top row. Avoid moving tiles downwards unnecessarily. Fill rows from the top down or side to side towards the corner.</textarea
@@ -77,20 +79,17 @@ Keep the highest value tile in the top left corner. Build a chain of decreasing 
               <button onclick="screenshotAndMove()" id="one-step">
                 <i class="fas fa-right-to-bracket"></i>
               </button>
+              <button onclick="toggleOutput()" id="toggle-output">Hide</button>
             </div>
           </div>
         </div>
 
-        <div
-          style="
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: center;
-            max-width: 600px;
-          "
-        >
+        <div class="output-container" id="output-container">
+          <select onchange="setModel()" id="model-select">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4o-mini">GPT-4o-Mini</option>
+          </select>
           <div class="reasoning-view">
             <h3>LLM Reasoning Output</h3>
             <pre id="llm-output">No output yet...</pre>

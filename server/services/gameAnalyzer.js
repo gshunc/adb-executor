@@ -2,14 +2,21 @@ const { shouldKeepScreenshot } = require("./imageProcessor");
 const { generateEmbedding, cosineSimilarity } = require("./embeddingService");
 require("dotenv").config();
 const OpenAI = require("openai");
-const { Type, createPartFromText } = require("@google/genai");
+const { createPartFromText } = require("@google/genai");
 const fs = require("fs");
 const path = require("path");
 const FormData = require("form-data");
 const axios = require("axios");
+const { GoogleGenAI } = require("@google/genai");
+const { LocalStorage } = require("node-localstorage");
+const localStorage = new LocalStorage("./scratch");
+const provider = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+localStorage.setItem("model", "gemini-2.0-flash");
 
 class GameAnalyzer {
-  constructor(modelProvider) {
+  constructor(modelProvider = provider) {
     this.modelProvider = modelProvider;
     this.decisionPrompt =
       'Based on the 2048 game board, determine the optimal move direction.\\n\\nDECISION PROCESS:\\n1. Review your matrix representation and strategic analysis.\\n2. Carefully evaluate the advantages and disadvantages of each possible move (UP, DOWN, LEFT, RIGHT).\\n3. Consider how each move aligns with the user\'s strategy (if provided).\\n4. Select the single best direction that maximizes score potential and board position.\\n5. Provide clear reasoning for your choice.\\n\\nReturn your answer as a JSON object with this exact structure:\\n{\\n  "direction": string,\\n  "reasoning": string\\n, "gameScore": number\\n}\\n\\nThe direction MUST be one of: "UP", "DOWN", "LEFT", or "RIGHT".\\nYour reasoning should be concise but complete, explaining why your chosen direction is optimal.';
@@ -21,59 +28,6 @@ class GameAnalyzer {
     this.gameScore = 0;
     this.embeddings = [];
     this.moveHistory = [];
-  }
-
-  /**
-   * Create a user prompt with text and image
-   * @param {string} promptText - The user's strategy text
-   * @param {Buffer} screenshotBuffer - The screenshot buffer
-   * @returns {Object} The formatted user prompt
-   */
-  createUserPrompt(promptText, board) {
-    if (this.modelProvider instanceof OpenAI) {
-      const content = [];
-
-      if (promptText !== "") {
-        content.push({
-          type: "text",
-          text: "This is how I would like you to play the game: " + promptText,
-        });
-      }
-
-      content.push({
-        type: "text",
-        text:
-          "This is the active game board. Given the board, determine the best move direction.\n\n" +
-          JSON.stringify(board.board),
-      });
-
-      return {
-        role: "user",
-        content,
-      };
-    } else {
-      const parts = [];
-
-      if (promptText !== "") {
-        parts.push(
-          createPartFromText(
-            "This is how I would like you to play the game: " + promptText
-          )
-        );
-      }
-
-      parts.push(
-        createPartFromText(
-          "This is the active game board. Given the board, determine the best move direction.\n\n" +
-            JSON.stringify(board.board)
-        )
-      );
-
-      return {
-        parts,
-        role: "user",
-      };
-    }
   }
 
   /**
@@ -159,14 +113,30 @@ class GameAnalyzer {
    * Build a prompt for the model
    * @param {Array} messages - The messages to build the prompt from
    * @param {string} userPrompt - The user's prompt
-   * @param {string} rulesInput - The rules input
    * @param {Array} board - The current game board
    */
-  _buildPrompt(messages, userPrompt, rulesInput, board) {
+  _buildPrompt(messages, userPrompt, board) {
     if (this.modelProvider instanceof OpenAI) {
       messages.push({ role: "system", content: this.decisionPrompt });
-      messages.push({ role: "user", content: rulesInput });
-      messages.push({ role: "user", content: userPrompt });
+      if (userPrompt !== "") {
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                "This is how I would like you to play the game: " + userPrompt,
+            },
+          ],
+        });
+      }
+
+      messages.push({
+        role: "user",
+        content:
+          "This is the active game board. Given the board, determine the best move direction.\n\n" +
+          JSON.stringify(board.board),
+      });
       messages.push({
         role: "user",
         content:
@@ -179,11 +149,6 @@ class GameAnalyzer {
         content: "This is the active game board. " + JSON.stringify(board),
       });
     } else {
-      messages.push({
-        parts: [createPartFromText(rulesInput)],
-        role: "user",
-      });
-
       messages.push({
         parts: [createPartFromText(this.decisionPrompt)],
         role: "user",
@@ -199,8 +164,18 @@ class GameAnalyzer {
         ],
         role: "user",
       });
-
-      messages.push(this.createUserPrompt(userPrompt, board));
+      messages.push({
+        parts: [createPartFromText(userPrompt)],
+        role: "user",
+      });
+      messages.push({
+        parts: [
+          createPartFromText(
+            "This is the active game board. " + JSON.stringify(board)
+          ),
+        ],
+        role: "user",
+      });
     }
   }
 
@@ -256,28 +231,31 @@ class GameAnalyzer {
    * @param {Buffer} screenshotBuffer - The screenshot buffer of the current game state
    * @returns {Object} The analysis result with direction and reasoning
    */
-  async analyzeGameState(userPrompt, rulesInput, screenshotBuffer) {
+  async analyzeGameState(userPrompt, screenshotBuffer) {
     try {
       const activeMove = { direction: null, board: null, reasoning: null };
       const { board, messages } = await this._getBoardState(screenshotBuffer);
 
       activeMove.board = board;
 
-      this._buildPrompt(messages, userPrompt, rulesInput, board);
+      this._buildPrompt(messages, userPrompt, board);
 
       // Call the model API
       let result;
       if (this.modelProvider instanceof OpenAI) {
-        const chat_completion = await this.openai.chat.completions.create({
-          model: process.env.MODEL_NAME,
-          messages: messages,
-          response_format: { type: "json_object" },
-          n: 1,
-        });
+        console.log("Using OpenAI model: ", localStorage.getItem("model"));
+        const chat_completion =
+          await this.modelProvider.chat.completions.create({
+            model: localStorage.getItem("model"),
+            messages: messages,
+            response_format: { type: "json_object" },
+            n: 1,
+          });
         result = JSON.parse(chat_completion.choices[0].message.content);
       } else {
+        console.log("Using Gemini model: ", localStorage.getItem("model"));
         const response = await this.modelProvider.models.generateContent({
-          model: process.env.GEMINI_MODEL,
+          model: localStorage.getItem("model"),
           contents: messages,
         });
 
